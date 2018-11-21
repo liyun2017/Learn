@@ -1,0 +1,1129 @@
+﻿ACEDentalDlg.h::   MFC类
+				boost::shared_ptr<ACEInteractorSimple> m_interactor;
+				boost::shared_ptr<SmartJawService> m_smartJaw;
+	
+	//SmartJawService SmartJaw SmartJawVzData 一组        
+	//SmartJaw 定义 _smartJawData     
+	//SmartJawData 定义 _jawData
+	//SmartJaw 与 SmartJawData 都位于SmartJaw.h中,代表可持久化的项目数据，包括原始模型数据，分割获取牙齿模型数据，整颗数据等
+SmartJawService.h::   SmartJaw组件接口，管理SmartJaw算法处理与显示交互服务
+			private::
+				boost::shared_ptr<SmartJaw> _smartJawData = nullptr;
+				boost::shared_ptr<SmartJawVzData> _smartJawVzData = nullptr;
+				boost::shared_ptr<ACEInteractorSimple> _aceIteractor = nullptr;
+				boost::shared_ptr<SmartJawDisplayService> _display = nullptr;;
+				vtkSmartPointer<BurstFixStyle> _burstFixstyle;
+SmartJaw.h::    各种牙齿数据
+			private:
+				SmartJawData _jawData;
+SmartJawVzData.h::	可视化牙颌数据
+			private:
+				//原始数据
+				boost::shared_ptr<SmartJaw> _smartJawData;
+				//上下牙
+				boost::shared_ptr<vtkACEColorfulActor> _upperActor;
+				boost::shared_ptr<vtkACEColorfulActor> _lowerActor;
+				//修正面数据
+				std::map<int, vtkSmartPointer<vtkActor>> _holeFixOnUpper;
+				std::map<int, vtkSmartPointer<vtkActor>> _holeFixOnLower;
+				//牙冠
+				boost::shared_ptr<vtkACEColorfulActor> _crowns[32]; //原始牙冠数据
+				boost::shared_ptr<vtkACEColorfulActor> _crownsBridge[32]; //原始牙冠数据
+				boost::shared_ptr<vtkACEColorfulActor> _crownsFix[32];// 修复过程中的牙冠数据
+				boost::shared_ptr<vtkACEColorfulActor> _crownFixSurface[2][32]; //邻面两侧
+				boost::shared_ptr<vtkACEColorfulActor> _crownFixBridge[2][32]; //邻面两侧
+				//带模拟牙根的牙冠数据
+				boost::shared_ptr<vtkACEColorfulActor> _crownsRoot[32]; //模拟牙根连接区域
+				boost::shared_ptr<vtkACEColorfulActor> _crownsWithRoot[32]; //利用真实牙根计算所得
+				//修复后牙冠
+				boost::shared_ptr<vtkACEColorfulActor> _fixedcrowns[32];
+
+ACEInteractorSimple.h::设置VTK的窗口 窗口交互 交互方式 渲染
+			protected:
+				vtkSmartPointer<vtkRenderWindowInteractor> _interactor;    
+				vtkSmartPointer<vtkRenderWindow > _window;
+				vtkSmartPointer<vtkInteractorStyle> _interactorStyle;
+				vtkSmartPointer<vtkRenderer> _renderer;
+SmartJawDisplayService.h:: 负责基于VTK的数据显示管理
+BurstFixStyle.h::    class BurstFixStyle : public vtkInteractorStyleTrackballCamera 设置交互的
+vtkACEColorfulActor.h::  class vtkACEColorfulActor :public VTKACEActor  
+
+	//ACEMesh表示ACEMeshData的一部分 ACETriangleMeshData:原始数据 ACEMesh：映射数据
+ACETriangleMeshData::三角面组成的表面数据
+			public::
+				面的操作
+				面的重构
+				点操作
+				线操作
+				面操作
+				点线面数据
+				点点关系
+				点面关系
+				点线关系
+				线面关系
+			private:
+				ACEPointDataArray _points; //点集合。保存点的坐标数据
+				ACETriangleDataArray _cells;  //面集合，保存面的点索引数据，点按顺序排列
+				ACELineDataArray _lines; //线段集合，保存所有的线段，点无顺序
+				
+				boost::shared_ptr<ACEPointLocator> _locator;
+
+				//点线面关系
+				std::map<ACEIdType, std::set<ACEIdType>> _pointCells; //每个点对应的所有面
+				std::map<ACEIdType, std::set<ACEIdType>> _pointLines; //每个点对应的所有线
+				std::map<ACEIdType, std::set<ACEIdType>> _lineCells;  //每条线对应的所有面,以及线和面得方向是否相同
+ACEMesh:: ACEMesh表示ACEMeshData的一部分
+			public::
+				点操作
+				线操作
+				面操作
+			private:
+				ACEIdArrayEx _points; //点的索引
+				ACEIdArrayEx _cellsIndex; //面片的索引(在原始数据上的索引)
+				ACETriangleDataArray _cells; //面片数组（包含的点索引为在ACEIdArrayEx的索引）
+				std::map<ACEIdType, ACEIdType> _mapSourceMeshCell; //源数据上的Cell在当前mesh上的映射（如果存在）
+				//源数据
+				boost::shared_ptr<ACETriangleMeshData> _sourceData;
+				//ACEBoolDataArray _pointsOnSource;
+				ACEIntDataArray _cellsOnSource;
+				//ACEBoolDataArray _linesOnSource;
+ACEDataArrayEx::一个顺序索引的数组。可以查找数据在数组的位置，也可以无效数组内的某一个数据
+
+
+
+气泡特征::
+void CACEDentalDlg::OnBnClickedBurstCandidate()
+{
+	m_smartJaw->AnalysisJawModel();
+	m_smartJaw->IdentifyBurstCandidate();
+}
+
+
+/*
+m_smartJaw	boost::shared_ptr<SmartJawService> m_smartJaw;    交互服务
+			SmartJawService   SmartJaw的组件接口，管理 SmartJaw 算法处理与显示交互服务
+			m_smartJaw 是在ACEDentalDlg.h（MFC类）中定义的保护成员变量，又是智能指针模板的 SmartJawService 类的对象
+
+
+第一行 m_smartJaw->AnalysisJawModel();    // SmartJawService 类的对象 m_smartJaw 的成员函数 AnalysisJawModel ，实现对原始牙颌模型进行初步分析
+void SmartJawService::AnalysisJawModel()
+{	
+	_display->SetDefaultInteractorStyle();
+	auto upperJ = _smartJawData->GetUpperJawModel();
+
+	GetMeshCurvature(
+		upperJ,
+		*_smartJawData->MeanCurvatureUpper,
+		*_smartJawData->GaussCurvatureUpper,
+		*_smartJawData->MinCurvatureUpper,
+		*_smartJawData->DiffCurvatureUpper
+		);
+
+	//_display->ShowMeanCurvature();
+	_display->ShowPointsColor(MIN_CURVATURE, "min_curvature");
+};
+
+1. _display->SetDefaultInteractorStyle();  SmartJawDisplayService 类的对象 _display 的成员函数 SetDefaultInteractorStyle ，实现设置交互方式
+_display  	boost::shared_ptr<SmartJawDisplayService> _display = nullptr;;
+			SmartJawDisplayService   负责基于VTK的数据显示管理
+			_display 是在SmartJawService.h中定义的私有变量，又是智能指针模板的 SmartJawDisplayService 类的对象
+void SmartJawDisplayService::SetDefaultInteractorStyle()
+{
+	_aceIteractor->SetInteractorStyle(_defaultStyle);
+}
+_aceIteractor  	boost::shared_ptr<ACEInteractorSimple> _aceIteractor = nullptr;
+				ACEInteractorSimple 类中 public: virtual void SetInteractorStyle(vtkInteractorStyle* style = nullptr);
+				_aceIteractor 是在 SmartJawDisplayService.h中定义的私有变量，又是智能指针模板的 ACEInteractorSimple 类的对象
+				void SmartJawDisplayService::SetInteractorStyle(vtkInteractorStyle* style)
+				{
+					_aceIteractor->SetInteractorStyle(style);
+				}
+_defaultStyle	vtkSmartPointer<vtkInteractorStyleTrackballCamera> _defaultStyle;
+				vtkInteractorStyleTrackballCamera 为vtk中的一种交互方式
+
+2.	auto upperJ = _smartJawData->GetUpperJawModel();  得到上牙颔数据
+auto 自动类型推断 
+_smartJawData	boost::shared_ptr<SmartJaw> _smartJawData = nullptr;
+				SmartJaw 接口，包含各种数据
+				_smartJawData 是在SmartJawService.h中定义的私有变量，又是智能指针模板的 SmartJaw 类的对象
+boost::shared_ptr<ACETriangleMeshData> SmartJaw::GetUpperJawModel()
+{
+	return _jawData.UpperJawModel;     返回 shared_ptr<ACETriangleMeshData> 类型的成员变量
+}  
+_jawData   SmartJawData _jawData;	   
+		   SmartJawData  可持久化的项目数据，包括
+						 --- 原始模型数据，
+						 --- 分割获取牙齿模型数据，
+						 --- 整颗数据等
+			_jawData 是在SmartJaw.h中定义类型为 SmartJawData 的私有变量
+			struct SmartJawData
+			{
+				//原始牙颌数据模型
+				boost::shared_ptr<ACETriangleMeshData> UpperJawModel;  ACETriangleMeshData三角面组成的表面数据
+				boost::shared_ptr<ACETriangleMeshData> LowerJawModel;
+				//原始牙颌映射数据
+				boost::shared_ptr<ACEMesh> UpperJawMesh;       ACEMesh表示ACEMeshData的一部分
+				boost::shared_ptr<ACEMesh> LowerJawMesh;
+
+				//牙齿在牙颌上的位置(id)表示
+				boost::shared_ptr<ACEMesh> CrownOnJaw[32];
+
+				//分割后牙冠数据模型
+				boost::shared_ptr<ACETriangleMeshData> CrownModel[33];	
+				boost::shared_ptr<ACEMesh> CrownMesh[32];
+
+				//补面后牙冠数据模型
+				boost::shared_ptr<ACETriangleMeshData> CrownFixSurface[2][33]; //补面数据
+				boost::shared_ptr<ACETriangleMeshData> CrownFixedBridge[2][33];//搭桥数据
+				boost::shared_ptr<ACETriangleMeshData> FixedCrownModel[33];
+
+				//包含了牙根的数据模型
+				boost::shared_ptr<ACETriangleMeshData> ToothModel[33];
+
+				//牙齿位置用标准牙的4x4变换矩阵表示
+				double Matrix[32][16];
+			};
+	
+3.GetMeshCurvature(
+		upperJ, 
+		*_smartJawData->MeanCurvatureUpper,   //曲率数据
+		*_smartJawData->GaussCurvatureUpper, //曲率数据
+		*_smartJawData->MinCurvatureUpper, //曲率数据
+		*_smartJawData->DiffCurvatureUpper //曲率数据
+		);
+	upperJ  上牙颔数据 shared_ptr<ACETriangleMeshData>类型 
+	*  typename boost::detail::sp_dereference< T >::type operator* () const
+		{
+			BOOST_ASSERT( px != 0 );
+			return *px;
+		}
+	_smartJawData  	boost::shared_ptr<SmartJaw> _smartJawData = nullptr;
+					SmartJaw 接口 数据 
+	MeanCurvatureUpper  boost::shared_ptr<ACEFloatDataArray> MeanCurvatureUpper;  //曲率数据
+	ACEFloatDataArray  typedef ACENoDeleteDataArray<float> ACEFloatDataArray;
+	
+函数原型 调用VTK的曲率算法，获取输入mesh各点的曲率信息
+	void GetMeshCurvature(     
+		boost::shared_ptr<ACETriangleMeshData> meshdata,
+		ACEFloatDataArray& meanCurvature, 
+		ACEFloatDataArray& gaussCurvature,
+		ACEFloatDataArray& min_Curvature, 
+		ACEFloatDataArray& diff_Curvature
+	)
+
+4._display->ShowPointsColor(MIN_CURVATURE, "min_curvature"); 
+	MIN_CURVATURE = 12,
+	_display  	boost::shared_ptr<SmartJawDisplayService> _display = nullptr;;
+	void SmartJawDisplayService::ShowPointsColor(int mode,std::string colorname)
+	{
+		SetDefaultInteractorStyle();  //设置交互的
+		_aceIteractor->GetRenderer()->RemoveAllViewProps(); 
+		_smartJawData->ShowPointsColor(mode, colorname, BOTH);
+		Update();
+	}
+	
+	_aceIteractor  	boost::shared_ptr<ACEInteractorSimple> _aceIteractor = nullptr;
+	vtkSmartPointer<vtkRenderer> ACEInteractorSimple::GetRenderer()
+	{
+		return _renderer;
+	}
+	_renderer	vtkSmartPointer<vtkRenderer> _renderer;
+	RemoveAllViewProps   void RemoveAllViewProps(void);  // Remove all props from the list of props.
+	
+	_smartJawData  	boost::shared_ptr<SmartJaw> _smartJawData = nullptr;
+	void SmartJawVzData::ShowPointsColor(int mode, std::string colorname, SMARTJAW_JAW_TYPE type)
+	
+
+
+第二行 	m_smartJaw->IdentifyBurstCandidate();
+m_smartJaw	boost::shared_ptr<SmartJawService> m_smartJaw;    交互服务
+void SmartJawService::IdentifyBurstCandidate()
+{
+	_display->SetDefaultInteractorStyle();  SmartJawDisplayService 对象_display 设置交互
+	auto upperJ = _smartJawData->GetUpperJawModel(); 得到上牙颔数据
+	if (!upperJ.get()) return;
+	IdentifyBurst(upperJ, 
+		*_smartJawData->MinCurvatureUpper,
+		*_smartJawData->BurstCandidateUpper,
+		*_smartJawData->BurstCandidateCellUpper);
+	_display->ShowBurstCandidates();
+}
+IdentifyBurst:: 基于sourceData的数值，设定阈值。处于阈值之内的设定为候选气泡区域
+upperJ:: 原始牙颌数据模型
+MinCurvatureUpper:: 曲率数据boost::shared_ptr<ACEFloatDataArray> MinCurvatureUpper;
+BurstCandidateUpper:: 气泡与孔修复过程数据 boost::shared_ptr<ACEFloatDataArray> BurstCandidateUpper;
+BurstCandidateCellUpper:: 	boost::shared_ptr<ACEFloatDataArray> BurstCandidateCellUpper;
+ShowBurstCandidates:: 显示候选气泡区域 void SmartJawDisplayService::ShowBurstCandidates()
+*/
+
+
+
+气泡修复::
+void CACEDentalDlg::OnBnClickedFillBurst()
+{
+	m_smartJaw->FixBurstJaw();
+}
+m_smartJaw	boost::shared_ptr<SmartJawService> m_smartJaw;    交互服务
+
+//提供手动交互方法，选择错误面并修复
+void SmartJawService::FixBurstJaw()
+{
+	auto upperJ = _smartJawData->GetUpperJawModel(); 得到上牙颔数据
+	if (!upperJ.get()) return;
+	_smartJawData->BurstSelectedUpper->Clone(*_smartJawData->BurstCandidateCellUpper);
+	_display->ShowBurstSelection();
+	_aceIteractor->SetInteractorStyle(_burstFixstyle.Get());
+};
+
+3. 	_smartJawData->BurstSelectedUpper->Clone(*_smartJawData->BurstCandidateCellUpper); 深copy
+	_smartJawData  	boost::shared_ptr<SmartJaw> _smartJawData = nullptr;   接口数据
+	BurstSelectedUpper	boost::shared_ptr<ACEFloatDataArray> BurstSelectedUpper;
+		template<class DataType>
+		void ACENoDeleteDataArray<DataType>::Clone(ACENoDeleteDataArray& source)
+		{
+			SetSize(source.Size());
+			for (int i = 0; i < _dataArray.size(); i++)
+			{
+				_dataArray[i] = source[i];
+			}
+		}
+		void ACENoDeleteDataArray<DataType>::SetSize(int number)
+		{
+			_dataArray.resize(number);
+		}
+		std::vector<DataType> _dataArray;
+	
+4. 	_display->ShowBurstSelection();
+	void SmartJawDisplayService::ShowBurstSelection()
+	{
+		_smartJawData->ShowBurstSelection(_showType);
+		Update();
+	}
+	_smartJawData  	boost::shared_ptr<SmartJaw> _smartJawData = nullptr;   接口数据
+	_showType::   SMARTJAW_JAW_TYPE _showType = UPPER;
+
+	void SmartJawVzData::ShowBurstSelection(SMARTJAW_JAW_TYPE type)
+	{
+		if ((type == UPPER || type == BOTH) && _upperActor.get())
+		{
+			_upperActor->SetColor(BURST_SELECTION,
+				_smartJawData->BurstSelectedUpper, "burstSelection", 1);
+			_upperActor->SetLUT(BURST_SELECTION, 12, -2, 10);
+		}
+		if ((type == LOWER || type == BOTH) && _lowerActor.get())
+		{
+			_lowerActor->SetColor(BURST_SELECTION,
+				_smartJawData->BurstSelectedLower, "burstSelection", 1);
+			_lowerActor->SetLUT(BURST_SELECTION, 5, -2, 2);
+		}
+	}
+	_upperActor  boost::shared_ptr<vtkACEColorfulActor> _upperActor;
+	SetColor    设置颜色显示源数据
+	BURST_SELECTION 21
+	BurstSelectedUpper	boost::shared_ptr<ACEFloatDataArray> BurstSelectedUpper;
+	SetLUT：
+			void vtkACEColorfulActor::SetLUT(int mode, int step, double mindata, double maxData)
+			{
+				_modeChanged = true;  
+				_currentMode = mode;
+				assert(step > 1);
+				_lutSteps = step;
+				assert(maxData > mindata);
+				_scalarRange[0] = mindata;
+				_scalarRange[1] = maxData;
+			}
+				step: 颜色数量
+				mindata: 映射最小数值
+				maxData: 映射最大数值
+
+5. 	_aceIteractor->SetInteractorStyle(_burstFixstyle.Get());
+		_aceIteractor	boost::shared_ptr<ACEInteractorSimple> _aceIteractor = nullptr;
+		SetInteractorStyle 设置交互	void SetInteractorStyle(vtkInteractorStyle* style = nullptr);
+		_burstFixstyle 	vtkSmartPointer<BurstFixStyle> _burstFixstyle;
+		BurstFixStyle    class BurstFixStyle : public vtkInteractorStyleTrackballCamera
+			class BurstFixStyle : public vtkInteractorStyleTrackballCamera
+				{
+				public:
+					BurstFixStyle();
+					~BurstFixStyle();
+					static BurstFixStyle *New();
+					vtkTypeMacro(BurstFixStyle, vtkInteractorStyle);
+
+				public:
+					void SetService(SmartJawService* service);
+					virtual void OnLeftButtonDown();
+					virtual void OnRightButtonDown();
+					virtual void OnMouseWheelForward();
+					virtual void OnMouseWheelBackward();
+
+				protected:
+					virtual void CheckEventPosition();
+
+				protected:
+					bool onSelection = false;   选择判断
+					vtkIdType _selectedCell = -1;   
+					vtkActor* _pickedActor;  //渲染拾取对象
+					vtkCellPicker *_interactionPicker;   //拾取者
+					SmartJawService* _service;  //服务类
+				};
+	vtkIdType vtk中点的描绘和操作在vtkPoints类中完成，调用SetPoint或InsertPoint可以设置点的vtkIdType（类似id的值）和三维坐标，2个函数的功能相同，区别在于InsertPoint先要完成点的范围检查和内存分配工作，所以速度较慢。注：这2个函数的实质是调用SetTuple或InsertTuple在数组的第i个位置赋值。				
+	vtkActor 拾取渲染对象
+	vtkCellPicker vtkCellPicker用于拾取某个单元，并返回交点的信息，比方，交点所相应的单元ID、全局坐标以及參数化单元坐标（Parametric cellcoordinates）
+				  vtkCellPicker拾取时也是投射一条光线至拾取点，在一定的容差范围内确定光线是否与Actor底层的几何相交，最后返回的就是沿着光线最靠近相机的单元及其相应的对象。
+
+				  
+class BurstFixStyle 交互类分析
+	vtkStandardNewMacro(BurstFixStyle); vtkStandardNewMacro 是VTK中定义的一个宏，作用是定义一个通用的New()函数 ，使用时需要将实际的类名传递给它。
+	
+	BurstFixStyle::BurstFixStyle()
+	{
+		_interactionPicker = vtkCellPicker::New();  
+		_interactionPicker->SetTolerance(0.001);  virtual void SetTolerance(double)—-是设置容差。
+		_pickedActor = NULL;
+	}
+	BurstFixStyle::~BurstFixStyle()
+	{
+		_pickedActor = NULL;
+		if (_interactionPicker)
+		{
+			_interactionPicker->Delete();
+			_interactionPicker = NULL;
+		}
+	}
+	void BurstFixStyle::SetService(SmartJawService* service)
+	{
+		assert(service != nullptr);
+		_service = service;
+	}
+
+	void BurstFixStyle::CheckEventPosition()
+	{
+		int x = this->Interactor->GetEventPosition()[0]; //函数输出鼠标点击的屏幕坐标
+		int y = this->Interactor->GetEventPosition()[1];
+
+		CurrentRenderer = Interactor->FindPokedRenderer(x, y);   vtkRenderer *CurrentRenderer; 进行拾取操作，同时获取显示窗口中的actor管理工具CurrentRenderer
+		if (this->CurrentRenderer == NULL) return;
+		this->_interactionPicker->Pick(x, y, 0, CurrentRenderer);
+		_selectedCell = this->_interactionPicker->GetCellId(); 获得选择的细胞编号
+	} 
+FindPokedRenderer:
+				进行拾取操作，同时获取显示窗口中的actor管理工具CurrentRenderer
+				vtkRenderer *CurrentRenderer = iren->FindPokedRenderer(x,y);
+				Picker->Pick(x, y, 0.0, CurrentRenderer);
+pick:
+	int Pick(double selectionX, double selectionY, double selectionZ, vtkRender* renderer);
+	该函数需要接受四个参数，前三个为鼠标的当前窗口坐标，其中selectionZ通常为零。最后一个是vtkRenderer对象。
+
+	void BurstFixStyle::OnLeftButtonDown()   //BurstFixStyle 类从vtkInteractorStyleTrackballCemera派生，并覆盖了该类OnLeftButtonDown()函数。
+	{
+		CheckEventPosition();
+		if (_selectedCell <0 )
+		return vtkInteractorStyleTrackballCamera::OnLeftButtonDown();
+		_service->SelectBurst(_selectedCell);   
+		vtkInteractorStyleTrackballCamera::OnLeftButtonDown();
+	}
+
+	void BurstFixStyle::OnRightButtonDown()
+	{
+		CheckEventPosition();
+		if (_selectedCell < 0)
+			return vtkInteractorStyleTrackballCamera::OnRightButtonDown();
+		_service->SelectBurst(_selectedCell,false);
+		vtkInteractorStyleTrackballCamera::OnRightButtonDown();
+	}
+	
+	若已鼠标单击，将得到对应X，Y处的cellId，即CheckEventPosition()函数;
+原SelectBurst:: 
+			若是左键单击，select=true，若对应ID处的值不为8（即这个区域没有被选择），则将其他为8的cell替换成10，故最后一个选中的有问题
+			如果是左键，将选中的区域标记成8
+			如果是右键，将选中的区域取消标记
+			选中以后得到对应的cellId,然后将其标记为8，之后再将其标记为需要滚轮使用的10
+			void SmartJawService::SelectBurst(int cellId, bool select= true)
+			{
+				//读取GetUpperJawModel
+				auto upperJ = _smartJawData->GetUpperJawModel();
+				if (!upperJ.get()) return;
+				
+				//////bug
+				//如果是BurstSelectedUpper[cellid]不为8，则将其他为8的地方替换成10
+				if ((*_smartJawData->BurstSelectedUpper)[cellId] != 8) //目标区域
+				{
+					//反选当前选择过区域
+					_smartJawData->BurstSelectedUpper->Replace(8, 10);
+				}
+				//选择
+				if (select == true)
+				{
+					//已经被选择
+					if ((*_smartJawData->BurstSelectedUpper)[cellId] == 8) return;
+					else
+						//选择当前区域
+						ACEAlgorithm::SelectCellAreaInRange(upperJ,
+						*_smartJawData->BurstSelectedUpper,
+						-1.5, -0.5, cellId, 8
+						);						
+				}
+				else
+				//取消区域
+				{
+					if ((*_smartJawData->BurstSelectedUpper)[cellId] == 8 ||
+						(*_smartJawData->BurstSelectedUpper)[cellId] == 10)
+					{
+						auto v = (*_smartJawData->BurstSelectedUpper)[cellId];
+					ACEAlgorithm::SelectCellAreaInRange(upperJ,
+						*_smartJawData->BurstSelectedUpper,
+						v-0.1, v+0.1, cellId, -1
+						);
+					}
+				}
+				_display->ShowBurstSelection();
+				_display->Update();
+			}
+		Replace:
+				void ACENoDeleteDataArray<DataType>::Replace(DataType data, DataType target)
+				{
+					if (data == target) return;
+					for (int i = 0; i < _dataArray.size(); i++)
+					{
+						if (_dataArray[i] == data) _dataArray[i] =  target;
+					}
+				}
+
+改SelectBurst:: 
+			若是左键单击，select=true，若对应ID处的值不为8（即这个区域没有被选择），则将其他为8的cell替换成10，故最后一个选中的有问题
+			如果是左键，将选中的区域标记成8
+			如果是右键，将选中的区域取消标记
+			选中以后得到对应的cellId,然后将其标记为8，之后再将其标记为需要滚轮使用的10
+			void SmartJawService::SelectBurst(int cellId, bool select= true)
+			{
+				//读取GetUpperJawModel
+				auto upperJ = _smartJawData->GetUpperJawModel();
+				if (!upperJ.get()) return;
+				
+				//////bug
+				//如果是BurstSelectedUpper[cellid]不为8，则将其他为8的地方替换成10
+				if ((*_smartJawData->BurstSelectedUpper)[cellId] != 8) //目标区域
+				{
+					//反选当前选择过区域
+					_smartJawData->BurstSelectedUpper->Replace(8, 10);
+				}
+				//选择
+				if (select == true)
+				{
+					//已经被选择
+					if ((*_smartJawData->BurstSelectedUpper)[cellId] == 8) return;
+					else
+						{//选择当前区域
+						ACEAlgorithm::SelectCellAreaInRange(upperJ,
+						*_smartJawData->BurstSelectedUpper,
+						-1.5, -0.5, cellId, 8
+						);
+						_smartJawData->BurstSelectedUpper->Replace(8, 10);
+						}
+				}
+				else
+				//取消区域
+				{
+					if ((*_smartJawData->BurstSelectedUpper)[cellId] == 8 ||
+						(*_smartJawData->BurstSelectedUpper)[cellId] == 10)
+					{
+						auto v = (*_smartJawData->BurstSelectedUpper)[cellId];
+					ACEAlgorithm::SelectCellAreaInRange(upperJ,
+						*_smartJawData->BurstSelectedUpper,
+						v-0.1, v+0.1, cellId, -1
+						);
+					}
+				}
+				_display->ShowBurstSelection();
+				_display->Update();
+			}
+				
+std::set<int> ACEAlgorithm::SelectCellAreaInRange(boost::shared_ptr<ACETriangleMeshData> data,
+	ACEFloatDataArray &reference, float limitMin, float limitMax, int seedPos, int targetValue)
+{
+	assert(data.get());
+	assert(data->Cells().Size() == reference.Size());
+	assert(seedPos < reference.Size());
+	int num = (int)reference.Size();
+	std::set<int> selected;
+	if (reference[seedPos] < limitMin || reference[seedPos] > limitMax)return selected;
+	selected.insert(seedPos);
+	reference[seedPos] = targetValue;
+
+	bool finished = false;
+	std::set<ACEIdType> seeds;
+	seeds.insert(seedPos);
+
+	int t = 0; //防止陷入死循环的保护性设置
+	while (seeds.size() > 0 && t < num)
+	{
+		t++;
+		if (t == num) break; //保护性代码，防止死循环
+		std::set<ACEIdType> newSeeds;
+		ACEIdType c1, c2, c3;
+		for each (ACEIdType s in seeds)
+		{
+			data->GetCellNeighbours(s, c1, c2, c3);
+
+			if (reference[c1] != targetValue && reference[c1] >= limitMin && reference[c1] <= limitMax)
+			{
+				reference[c1] = targetValue;
+				selected.insert(c1);
+				newSeeds.insert(c1);
+			}
+			if (reference[c2] != targetValue  && reference[c2] >= limitMin && reference[c2] <= limitMax)
+			{
+				reference[c2] = targetValue;
+				selected.insert(c2);
+				newSeeds.insert(c2);
+			}
+			if (!reference[c3] != targetValue  && reference[c3] >= limitMin && reference[c3] <= limitMax)
+			{
+				reference[c3] = targetValue;
+				selected.insert(c3);
+				newSeeds.insert(c3);
+			}
+		}
+		seeds = newSeeds;
+	}
+	return selected;
+}
+
+				
+	void BurstFixStyle::OnMouseWheelForward()
+	{
+		CheckEventPosition();
+		if (_selectedCell < 0)
+			return vtkInteractorStyleTrackballCamera::OnMouseWheelForward();
+		_service->ZoomBurst(_selectedCell, true);
+	}
+	
+	void BurstFixStyle::OnMouseWheelBackward()
+	{
+		CheckEventPosition();
+		if (_selectedCell < 0)
+			return vtkInteractorStyleTrackballCamera::OnMouseWheelBackward();
+		_service->ZoomBurst(_selectedCell, false);
+	}
+
+ZoomBurst：
+			void SmartJawService::ZoomBurst(int cellId, bool dilate)
+			{
+				auto upperJ = _smartJawData->GetUpperJawModel();
+				if (!upperJ.get()) return;
+				if ((*_smartJawData->BurstSelectedUpper)[cellId] != 10) return;
+
+				if (dilate == true)
+					/*膨胀所有选中区域
+					static std::set<int> DilateSelectedArea(boost::shared_ptr<ACETriangleMeshData> data,
+					ACEFloatDataArray &selectionMarker, float markedValue, int cycle);
+					*/
+
+					//ACEAlgorithm::DilateSelectedArea(upperJ,*_smartJawData->BurstSelectedUpper,10, 1);
+
+					/*膨胀单一选中区域
+					std::set<int> ACEAlgorithm::DilateSelectedSignalArea(boost::shared_ptr<ACETriangleMeshData> data,
+					ACEFloatDataArray &selectionMarker, int CellId, float markedValue, int cycle);
+					*/
+					ACEAlgorithm::DilateSelectedSignalArea(upperJ, *_smartJawData->BurstSelectedUpper, cellId, 10, 1);
+				else
+				{
+					/*按Mark腐蚀所有选中区域
+					static std::set<int> ACEAlgorithm::ErodeSelectedArea(boost::shared_ptr<ACETriangleMeshData> data,
+						ACEFloatDataArray &reference, ACEFloatDataArray &selectionMarker, float markedValue, int cycle);
+
+						ACEAlgorithm::ErodeSelectedArea(upperJ,
+							*_smartJawData->BurstCandidateCellUpper,
+							*_smartJawData->BurstSelectedUpper,
+							10, 1
+							);
+					//按Mark膨胀单一选中区域
+					static std::set<int> ACEAlgorithm::ErodeSelectedArea(boost::shared_ptr<ACETriangleMeshData> data,
+						ACEFloatDataArray &reference, ACEFloatDataArray &selectionMarker, int CellId, float markedValue, int cycle);
+					*/
+					ACEAlgorithm::ErodeSelectedArea(upperJ,
+						*_smartJawData->BurstCandidateCellUpper,
+						*_smartJawData->BurstSelectedUpper,
+						cellId,10, 1
+						);
+
+				}
+				_display->ShowBurstSelection();
+				_display->Update();
+			}
+
+/*
+扩展所有选中区域 N 圈
+*/
+std::set<int> ACEAlgorithm::DilateSelectedArea(boost::shared_ptr<ACETriangleMeshData> data,
+	ACEFloatDataArray &selectionMarker, float markedValue = 1, int cycle = 2)
+{
+	assert(data.get());
+	std::set<int> newCells;
+	for (int i = 0; i < cycle; i++)
+	{
+		std::set<int> iEdge;
+		std::set<int> oEdge;
+		//找到所有数值符合条件的点的区域边界
+		FindSelectionEdge(data, selectionMarker, iEdge, oEdge, markedValue);
+
+		newCells.insert(oEdge.begin(), oEdge.end());
+
+		for each (auto var in oEdge)
+		{
+			selectionMarker[var] = markedValue;
+		}
+	}
+	return newCells;
+}
+
+/*
+扩展单一选中区域 N 圈
+*/
+std::set<int> ACEAlgorithm::DilateSelectedSignalArea(boost::shared_ptr<ACETriangleMeshData> data,
+	ACEFloatDataArray &selectionMarker,int CellId, float markedValue = 1, int cycle = 2)
+{
+	assert(data.get());
+	std::set<int> newCells;
+	for (int i = 0; i < cycle; i++)
+	{
+		std::set<int> iEdge;
+		std::set<int> oEdge;
+		//找到所有数值符合条件的点的区域边界(仅限包含cellId的独立区域)
+		FindSelectionEdge(data, CellId, selectionMarker, iEdge, oEdge, markedValue);
+
+		if (oEdge.size() == 0) break;
+		newCells.insert(oEdge.begin(), oEdge.end());
+
+		for each (auto var in oEdge)
+		{
+			selectionMarker[var] = markedValue;
+		}
+	}
+	return newCells;
+}
+
+/*
+找到所有数值符合条件的点的区域边界
+*/
+void ACEAlgorithm::FindSelectionEdge(
+	boost::shared_ptr<ACETriangleMeshData> data, ACEFloatDataArray &selectionMarker,
+	std::set<ACEIdType>& innerEdge, std::set<ACEIdType>& outerEdge, float markedValue)	
+{
+	assert(data.get());
+	assert(data->Cells().Size() == selectionMarker.Size());
+	int s = (int)data->Cells().Size();
+	outerEdge.clear();
+	innerEdge.clear();
+	ACEIdType cn[3];
+	for (int i = 0; i < s; i++)
+	{
+		if (selectionMarker[i] != markedValue) continue;
+		data->GetCellNeighbours(i, cn);
+		bool isEdge = false;
+		for (int c = 0; c < 3; c++)
+		{
+			if (cn[c] >= 0)
+			{
+				if (selectionMarker[cn[c]] != markedValue)
+				{
+					outerEdge.insert(cn[c]);
+					isEdge = true;
+				}
+			}
+			else isEdge = true;
+		}
+		if (isEdge)
+			innerEdge.insert(i);
+	}
+}
+/*
+找到所有数值符合条件的点的区域边界(仅限包含cellId的独立区域)
+*/
+void ACEAlgorithm::FindSelectionEdge(boost::shared_ptr<ACETriangleMeshData> data, int CellId,
+	ACEFloatDataArray &selectionMarker,
+	std::set<ACEIdType>& innerEdge, std::set<ACEIdType>& outerEdge, float markedValue)
+{
+	assert(data.get());
+	assert(data->Cells().Size() == selectionMarker.Size());
+	int s = (int)data->Cells().Size();
+	//TODO需要重载，选择确定数值而不是一个区间的数据。也可以用函数参数
+	auto selected = SelectCellAreaInRange(data, selectionMarker, markedValue - 0.01, markedValue + 0.01, CellId);
+	outerEdge.clear();
+	innerEdge.clear();
+	ACEIdType cn[3];
+	for each (auto i in selected)
+	//for (int i = 0; i < s; i++)
+	{
+		if (selectionMarker[i] != markedValue) continue;		
+		data->GetCellNeighbours(i, cn);
+		bool isEdge = false;
+		for (int c = 0; c < 3; c++)
+		{
+			if (cn[c] >= 0)//表示没有被删除
+			{
+				if (selectionMarker[cn[c]] != markedValue)
+				{
+					outerEdge.insert(cn[c]);
+					isEdge = true;
+				}
+			}
+			else isEdge = true;
+		}
+		if (isEdge)
+			innerEdge.insert(i);
+	}
+}
+
+/*
+缩进所有选中区域 N 圈, 并把取消选择区域设定为reference值
+ACEAlgorithm::ErodeSelectedArea(upperJ,*_smartJawData->BurstCandidateCellUpper,*_smartJawData->BurstSelectedUpper,10, 1);
+*/
+std::set<int> ACEAlgorithm::ErodeSelectedArea(boost::shared_ptr<ACETriangleMeshData> data,
+	ACEFloatDataArray &reference, ACEFloatDataArray &selectionMarker, float markedValue = 1, int cycle = 1)
+{
+	assert(data.get());
+	assert(reference.Size() == selectionMarker.Size());
+
+	std::set<int> unSelected;
+	for (int i = 0; i < cycle; i++)
+	{
+		std::set<int> iEdge;
+		std::set<int> oEdge;
+		FindSelectionEdge(data, selectionMarker, iEdge, oEdge, markedValue);
+		if (iEdge.size() == 0) break;
+		unSelected.insert(iEdge.begin(), iEdge.end());
+
+		for each (auto var in iEdge)
+		{
+			selectionMarker[var] = reference[var];
+		}
+	}
+	return unSelected;
+}
+
+/*
+缩进单一选中区域 N 圈, 并把取消选择区域设定为reference值
+static std::set<int> ACEAlgorithm::ErodeSelectedArea(boost::shared_ptr<ACETriangleMeshData> data,
+ACEFloatDataArray &reference, ACEFloatDataArray &selectionMarker, int CellId, float markedValue, int cycle);
+*/
+std::set<int> ACEAlgorithm::ErodeSelectedArea(boost::shared_ptr<ACETriangleMeshData> data,
+	ACEFloatDataArray &reference, ACEFloatDataArray &selectionMarker, int CellId, float markedValue = 1, int cycle = 1)
+{
+	assert(data.get());
+	assert(reference.Size() == selectionMarker.Size());
+
+	std::set<int> unSelected;
+	for (int i = 0; i < cycle; i++)
+	{
+		std::set<int> iEdge;
+		std::set<int> oEdge;
+		//FindSelectionEdge(data, selectionMarker, iEdge, oEdge, markedValue);
+		FindSelectionEdge(data, CellId, selectionMarker, iEdge, oEdge, markedValue);
+
+		if (iEdge.size() == 0) break;
+		unSelected.insert(iEdge.begin(), iEdge.end());
+
+		for each (auto var in iEdge)
+		{
+			selectionMarker[var] = reference[var];
+		}
+	}
+	return unSelected;
+}
+
+
+
+
+
+
+删除气泡：
+		分析气泡 得到曲率数据
+				//m_smartJaw->AnalysisJawModel();
+				//void SmartJawService::AnalysisJawModel()
+				//{
+				//	_display->SetDefaultInteractorStyle();
+				//	auto upperJ = _smartJawData->GetUpperJawModel();
+
+				//	GetMeshCurvature(
+				//		upperJ,
+				//		*_smartJawData->MeanCurvatureUpper,
+				//		*_smartJawData->GaussCurvatureUpper,
+				//		*_smartJawData->MinCurvatureUpper,
+				//		*_smartJawData->DiffCurvatureUpper
+				//		);
+
+				//	//_display->ShowMeanCurvature();
+				//	_display->ShowPointsColor(MIN_CURVATURE, "min_curvature");
+				//};
+		识别候选气泡 
+				//m_smartJaw->IdentifyBurstCandidate();
+				/*void SmartJawService::IdentifyBurstCandidate()
+				{
+					_display->SetDefaultInteractorStyle();
+					auto upperJ = _smartJawData->GetUpperJawModel();
+					if (!upperJ.get()) return;
+					IdentifyBurst(upperJ,
+						*_smartJawData->MinCurvatureUpper,
+						*_smartJawData->BurstCandidateUpper,
+						*_smartJawData->BurstCandidateCellUpper);
+					_display->ShowBurstCandidates();
+				}*/
+				
+	void SmartJawService::DeleteSelectedBurstArea()
+	{
+		_display->SetDefaultInteractorStyle();
+		auto upperJ = _smartJawData->GetUpperJawModel();
+		if (!upperJ.get()) return;
+		
+		//1考虑腐蚀试试
+		/*
+		腐蚀当前区域
+		std::set<int> ACEAlgorithm::ErodeSelectedArea(boost::shared_ptr<ACETriangleMeshData> data,
+			ACEFloatDataArray &selectionMarker, float delval, float markedValue = 1, int cycle = 1)
+		
+			//缩进单一选中区域 N 圈, 并把取消选择区域设定为reference值
+		ACEAlgorithm::ErodeSelectedArea(upperJ,
+			*_smartJawData->BurstCandidateCellUpper,
+			*_smartJawData->BurstSelectedUpper,
+			cellId, 10, 1);
+		*/
+		//ACEAlgorithm::ErodeSelectedArea(upperJ, *_smartJawData->BurstSelectedUpper, 0,10,1);
+
+		//2对应的cellId的点设置为0
+		int numCells = upperJ->Cells().Size();
+		if (_smartJawData->BurstSelectedUpper->Size() != numCells) return;
+		for (int i = 0; i < numCells; i++)
+		{
+			if ((*_smartJawData->BurstSelectedUpper)[i] == 10)
+			{
+				upperJ->Cells()[i].Points[0] = 0;
+				upperJ->Cells()[i].Points[1] = 0;
+				upperJ->Cells()[i].Points[2] = 0;
+
+			}
+		}
+
+		//3参考一下删除小壳体
+
+
+		//_display->ShowBurstSelection();
+		_display->ResetDisplay();
+		_display->Update();
+	};
+
+	//删除气泡   参考小壳体
+void SmartJawService::DeleteSelectedBurstArea()
+{
+	int numOfDeleted = 0;
+
+	_display->SetDefaultInteractorStyle();
+	auto upperJ = _smartJawData->GetUpperJawMesh();
+	if (upperJ.get())
+	{
+		auto marker = _smartJawData->BurstSelectedUpper;
+		for (int i = 0; i < marker->Size(); i++)
+		{
+			if (marker->GetData(i) != 10)
+			{
+				upperJ->ExcludeCell(i);
+				numOfDeleted++;
+
+			}
+		}
+	}
+	if (numOfDeleted > 0)
+	{
+	_smartJawData->UpdateDataFromMesh();
+	_smartJawData->UpdateMeshFromData();
+	_display->ResetDisplay();
+	}
+};
+
+
+
+//void SmartJawService::FixSelectedBurstArea()
+//{
+//	_display->SetDefaultInteractorStyle();
+//	auto upperJ = _smartJawData->GetUpperJawModel();
+//	if (!upperJ.get()) return;
+//	//auto upperJMesh = _smartJawData->GetUpperJawMesh();
+//
+//	//ACEMeshDataToMatrix(boost::shared_ptr<ACEMesh> data, std::vector<int> &lv, boost::shared_ptr<ACETriangleMeshData> &hole);
+//	std::vector<int> lv;
+//	int numCells = upperJ->Cells().Size();
+//	for (int i = 0; i < numCells; i++)
+//	{
+//		if ((*_smartJawData->BurstSelectedUpper)[i] == 10)
+//		{
+//			lv.push_back(i);
+//		}
+//	}
+//
+//
+//	ACEMeshDataToMatrix(upperJ, lv, );
+//	_display->ResetDisplay();
+//	_display->Update();
+//};
+
+//修复气泡
+//1补洞   2平滑
+void SmartJawService::FixSelectedBurstArea()
+{
+	_display->SetDefaultInteractorStyle();
+	auto upperJ = _smartJawData->GetUpperJawMesh();
+	if (!upperJ.get()) return;
+
+	//补洞
+	/*std::vector<int> lv;
+	int numCells = _smartJawData->BurstSelectedUpper->Size();
+	for (int i = 0; i < numCells; i++)
+	{
+		if ((*_smartJawData->BurstSelectedUpper)[i] == 10)
+		{
+			lv.push_back(i);
+		}
+	}*/
+
+	upperJ->IncludeAllCells();
+	ACEMeshHoles holes(upperJ->SourceData());
+	holes.Build();
+	int max_hid = 0;
+	for (int i = 1; i < holes.NumOfCloseHoles(); i++)
+		max_hid = holes.GetHoleCurve(i)->PointsNum()
+	> holes.GetHoleCurve(max_hid)->PointsNum() ? i : max_hid;
+	for (int h = 0; h < holes.NumOfCloseHoles(); h++){
+		if (h == max_hid) continue;
+		auto lv = holes.GetHoleCurve(h)->GetVector();
+		ACEMeshDataToMatrix(upperJ, lv);
+		upperJ->Update();
+		upperJ->IncludeAllCells();
+	}
+	//更新数据
+	//_smartJawData->UpdateDataFromMesh();
+	//_smartJawData->UpdateMeshFromData();
+	_display->ResetDisplay();
+	_display->Update();
+
+
+
+	/*_display->SetDefaultInteractorStyle();
+	auto upperJ = _smartJawData->GetUpperJawModel();
+	if (!upperJ.get()) return;*/
+
+	//auto fixBurst = [&](boost::shared_ptr<ACEMesh> mesh){
+	//	if (!mesh.get()) return;
+	//	mesh->IncludeAllCells();
+	//	std::vector<boost::shared_ptr<ACETriangleMeshData>> fixes;
+	//	auto model = mesh->SourceData();
+	//	ACEMeshHoles holes(model);
+	//	holes.Build();
+	//	//找最大孔洞
+	//	int max_hid = 0;
+	//	for (int i = 1; i < holes.NumOfCloseHoles(); i++)
+	//		max_hid = holes.GetHoleCurve(i)->PointsNum()
+	//	> holes.GetHoleCurve(max_hid)->PointsNum() ? i : max_hid;
+	//	// 遍历所有洞，补出最大洞以外的洞
+	//	for (int i = 0; i < holes.NumOfCloseHoles(); i++){
+	//		if (i == max_hid) continue;
+	//		auto lv = holes.GetHoleCurve(i)->GetVector();
+	//		boost::shared_ptr<ACETriangleMeshData> fix = boost::make_shared<ACETriangleMeshData>();
+	//		ACEMeshDataToMatrix(mesh, lv, fix);
+	//		fixes.push_back(fix);
+	//		mesh->Update();
+	//		mesh->IncludeAllCells();
+
+	//	}
+	//	//将所有洞与原模型合并
+	//	for (auto fix : fixes){
+	//		std::vector<ACEIdType> nothing;
+	//		ACEAlgorithm::MergeMeshData(*fix, *model, nothing);
+	//	}
+	//	//更新mesh
+	//	mesh->Update();
+	//	mesh->IncludeAllCells();
+	//};
+	//fixBurst(_smartJawData->GetUpperJawMesh());
+	//fixBurst(_smartJawData->GetLowerJawMesh());
+	////_smartJawData->S
+	////_smartJawData->UpdateDataFromMesh();
+	////_smartJawData->UpdateMeshFromData();
+	//_display->ResetDisplay();
+	//_display->Update();
+
+
+
+	auto fixBurst = [&](boost::shared_ptr<ACEMesh> mesh){
+	if (!mesh.get()) return;
+	mesh->IncludeAllCells();
+	std::vector<boost::shared_ptr<ACETriangleMeshData>> fixes;
+	auto model = mesh->SourceData();
+	ACEMeshHoles holes(model);
+	holes.Build();
+	//找最大孔洞
+	int max_hid = 0;
+	for (int i = 1; i < holes.NumOfCloseHoles(); i++)
+		max_hid = holes.GetHoleCurve(i)->PointsNum()
+	> holes.GetHoleCurve(max_hid)->PointsNum() ? i : max_hid;
+	// 遍历所有洞，补出最大洞以外的洞
+	for (int i = 0; i < holes.NumOfCloseHoles(); i++){
+		if (i == max_hid) continue;
+		auto lv = holes.GetHoleCurve(i)->GetVector();
+		boost::shared_ptr<ACETriangleMeshData> fix = boost::make_shared<ACETriangleMeshData>();
+		ACEMeshDataToMatrix(mesh, lv, fix);
+	}
+
+	_smartJawData->SetUpperJawModel(mesh->SourceData());
+	////将所有洞与原模型合并
+	//std::vector<ACEIdType> nothing;
+	//for (auto fix : fixes){
+	//	ACEAlgorithm::MergeMeshData(*fix, *model, nothing);
+	//}
+	};
+	fixBurst(_smartJawData->GetUpperJawMesh());
+	_smartJawData->UpdateMeshFromData();
+	_display->ResetDisplay();
+
+
+
+
+
+
+	最后//
+	auto fixBurst = [&](boost::shared_ptr<ACEMesh> mesh){
+		if (!mesh.get()) return;
+		mesh->IncludeAllCells();
+		std::vector<boost::shared_ptr<ACETriangleMeshData>> fixes;
+		auto model = mesh->SourceData();
+		ACEMeshHoles holes(model);
+		holes.Build();
+		//找最大孔洞
+		int max_hid = 0;
+		for (int i = 1; i < holes.NumOfCloseHoles(); i++)
+			max_hid = holes.GetHoleCurve(i)->PointsNum()
+		> holes.GetHoleCurve(max_hid)->PointsNum() ? i : max_hid;
+		// 遍历所有洞，补出最大洞以外的洞
+		for (int i = 0; i < holes.NumOfCloseHoles(); i++){
+			if (i == max_hid) continue;
+			auto lv = holes.GetHoleCurve(i)->GetVector();
+			boost::shared_ptr<ACETriangleMeshData> fix = boost::make_shared<ACETriangleMeshData>();
+			ACEMeshDataToMatrix(mesh, lv, fix);
+			fixes.push_back(fix);
+		}
+
+		//将所有洞与原模型合并
+		std::vector<ACEIdType> nothing;
+		for (auto fix : fixes){
+			ACEAlgorithm::MergeMeshData(*fix, *model, nothing);
+		}
+		_smartJawData->SetUpperJawModel(model);
+	};
+	fixBurst(_smartJawData->GetUpperJawMesh());
+	_smartJawData->UpdateMeshFromData();
+	_display->ResetDisplay();
+	_display->Update();
+
+}
+
+
+	

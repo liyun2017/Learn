@@ -1,0 +1,363 @@
+float ACECurveMeasurement::AngleXY(int index, int distance)
+{
+	int num = _curve->PointsNum();
+	assert(index < num && index >= 0);
+	assert(_cross.Size() >= num);
+
+	ACEIdType p1 = _curve->Point(index - distance < 0 ? index - distance + num : index - distance);
+	ACEIdType pm = _curve->Point(index);
+	ACEIdType p2 = _curve->Point(index + distance > num - 1 ? index + distance - num : index + distance);
+
+	ACEPointData d1;
+	ACEPointData dm;
+	ACEPointData d2;
+	ACEPointData d;
+	ACEPointDataArray& points = _data->Points();
+	d1 = points[p1];
+	dm = points[pm];
+	d2 = points[p2];
+
+	//d1.XYZ.X  d1.XYZ.Y   d2.XYZ.X  d2.XYZ.Y    dm.XYZ.X   dm.XYZ.Y
+	double dx = d1.XYZ.X - d2.XYZ.X;
+	double dy = d1.XYZ.Y - d2.XYZ.Y;
+
+	double u = (dm.XYZ.X - d1.XYZ.X) * (d1.XYZ.X - d2.XYZ.X)
+		+ (dm.XYZ.Y - d1.XYZ.Y) * (d1.XYZ.Y - d2.XYZ.Y);
+
+	u = u / ((dx*dx) + (dy*dy));
+
+	d.XYZ.X = d1.XYZ.X + u*dx;
+	d.XYZ.Y = d1.XYZ.Y + u*dy;
+	d.XYZ.Z = dm.XYZ.Z;
+
+	ACEPointData c1;
+	ACEPointData c2;
+	c1 = Sub(d1, d2);
+	c2 = Sub(d, d2);
+	Norm(c1);
+	Norm(c2);
+	auto angle = ACEMath::DegreesFromRadians(acos(Dot(c1, c2)));
+	return angle;
+
+}
+
+
+
+
+
+
+
+#pragma region 然后对大型凹陷进行处理
+	analyze();    
+	maxFailure = 2;
+	thresholdA = 0.1;
+
+	caveMarker.ResetValue(0);
+	identfyCave(30, 4);
+	markCaveBottom();
+	success = checkCaveBottom();
+
+	//TODO:IMPORTANT:这里还需要另外一个判断条件。
+	//原始凹陷区域的整体法向量与轮询到的点与凹陷区域内边界组成三角形的的法向量差异
+	//或者：颠倒凹陷区域拟合面的距离
+	//如果太远，则结束
+
+	//for (int i = 0; i < caveList.size();){
+	//	if (points[caveList[i].Bottom1].Value[1] * points[caveList[i].Bottom2].Value[1] < 0){
+	//		caveList.erase(caveList.begin() + i);
+	//		cavenum--;
+	//	}
+	//	else
+	//	{
+	//		i++;
+	//	}
+	//}
+	if (success)
+		markCaveTop(false, false);
+	crown = dataManager[_currentToothIndex].GetMergeData();
+
+#if 1//DEBUG_FOR_CONVEXITY
+	angles5.ResetValue(0);
+	for (int p = 0; p < num; p++)
+	{
+		auto id = curve->Point(p);
+		angles5[id] = caveMarker[p];
+	}
+	DebugUtil::ShowColorfulActor(CROWN_CURRENT, angles5, -2, 2, 5, false); //Debug显示
+	DebugUtil::ShowRenderer(CROWN_CURRENT, "cave list -- big");
+#endif
+#pragma endregion 然后对大型凹陷进行处理
+
+	_smartJawVzData->ReloadCrowns();
+	_display->Update();
+
+	//大型凹陷两端作为搭桥点
+	_smartJawData->BridgePoint_L[_currentToothIndex][0] = -1;
+	_smartJawData->BridgePoint_L[_currentToothIndex][1] = -1;
+	_smartJawData->BridgePoint_R[_currentToothIndex][0] = -1;
+	_smartJawData->BridgePoint_R[_currentToothIndex][1] = -1;
+
+	if (caveList.empty()) return;
+	points = crown->Points();
+	auto lv = curve->GetVector();
+
+	//筛选大型凹陷：选取凹陷区域端点y坐标平均值最大和最小的
+	int max_id, min_id;
+	{
+		int n1 = curve->PointsNum();
+		
+		int i = 0;
+		while ((caveList[i].Top2 - caveList[i].Top1 + n1) % n1 < 15) i++;
+		max_id = min_id = i;
+		int mid = mid = (caveList[i].Bottom1 + (caveList[i].Bottom2 - caveList[i].Bottom1 + lv.size()) % lv.size() / 2) % lv.size();
+		float aver = points[lv[mid]].Value[1];
+		float max_val, min_val;
+		max_val = min_val = aver;
+		i++;
+		for (; i < caveList.size(); i++){
+			if ((caveList[i].Top2 - caveList[i].Top1 + n1) % n1 < 15) continue;
+			mid = mid = (caveList[i].Bottom1 + (caveList[i].Bottom2 - caveList[i].Bottom1 + lv.size()) % lv.size() / 2) % lv.size();
+			aver = points[lv[mid]].Value[1];
+			max_id = aver > max_val ? i : max_id;
+			min_id = aver < min_val ? i : min_id;
+			max_val = aver > max_val ? aver : max_val;
+			min_val = aver < min_val ? aver : min_val;
+		}
+	}
+
+	if (caveList.size() > 0){
+		ProcessBridgePoint(caveList[max_id], lv);
+		_smartJawData->BridgePoint_L[_currentToothIndex][0] = lv[caveList[max_id].Top1];
+		_smartJawData->BridgePoint_R[_currentToothIndex][0] = lv[caveList[max_id].Top2];
+	}
+	if (caveList.size() > 1){
+		ProcessBridgePoint(caveList[min_id], lv);
+		_smartJawData->BridgePoint_L[_currentToothIndex][1] = lv[caveList[min_id].Top1];
+		_smartJawData->BridgePoint_R[_currentToothIndex][1] = lv[caveList[min_id].Top2];
+	}
+
+
+	
+	
+#pragma region 定义分析凹凸性方法
+	boost::shared_ptr<ACEMeshHoles> holes = boost::make_shared<ACEMeshHoles>(crown);
+	int num;
+	ACECurveMeasurement acm;  //用于基于ACECurve进行详尽的数据分析测量
+	ACEPointDataArray& points = crown->Points();
+	ACEFloatDataArray normAngles;
+	ACEFloatDataArray angles;
+	ACEFloatDataArray angles2;
+	ACEFloatDataArray angles3;
+	ACEFloatDataArray angles4;
+	ACEFloatDataArray angles5;
+	ACEFloatDataArray caveMarker;
+	boost::shared_ptr<ACECurveOnMesh> curve;
+
+	auto analyze = [&](){
+		holes->Build();
+		if (holes->NumOfCloseHoles() == 0)
+			holes->TryFixConflictLine(true);
+		//这里如果确信不等于零，可以用assert(holes->NumOfCloseHoles() != 0)
+		//否则应该二次保护
+		if (holes->NumOfCloseHoles() == 0) return;
+
+		//找到最大孔区域
+		int max_hid = 0;
+		for (int hid = 1; hid < holes->NumOfCloseHoles(); hid++)
+			if (holes->GetHoleCurve(max_hid)->PointsNum()
+				< holes->GetHoleCurve(hid)->PointsNum()) max_hid = hid;
+		curve = holes->GetHoleCurve(max_hid);
+
+		assert(curve.get());
+		acm = ACECurveMeasurement(crown, curve); //ACECurveMeasurement类里的数据 data curve 为 crown curve
+		acm.Measure();  //？
+
+		num = curve->PointsNum();  //获得曲线段里多少点
+
+#if DEBUG_FOR_CONVEXITY
+		DebugUtil::SetData(CROWN_CURRENT, crown);
+#endif
+#pragma region 查看法向量差异，判断凹凸性
+		normAngles.SetSize(crown->Points().Size());  //设置法向量角度的尺寸
+		normAngles.ResetValue(270); //初始化为270
+		for (int p = 0; p < num; p++)
+			normAngles[curve->Point(p)] = acm.NormDiff(p, 10);   //曲线段里的点对应的法向量角度  其他点为270
+
+#if DEBUG_FOR_CONVEXITY
+		DebugUtil::ShowColorfulActor(CROWN_CURRENT, normAngles, 45, 180, 6, false); //Debug显示
+		DebugUtil::ShowRenderer(CROWN_CURRENT);
+#endif
+
+		//TODO此处结果似乎不准确
+		angles.SetSize(crown->Points().Size()); 
+		angles.ResetValue(-45);
+		for (int p = 0; p < num; p++)
+		{
+			angles[curve->Point(p)] = acm.Angle0(p);  //曲线段里的点对应的角度(不考虑相邻面法向量) 其他为-45
+		}
+
+		for (int p = 0; p < num; p++)
+		{
+			angles[curve->Point(p)] = 180 - acm.Angle0(p);  //曲线段里的点对应的180-角度(不考虑相邻面法向量) 其他为-45
+			if (acm.NormDiff(p) > 90) //NormDiff曲线法向量与面法向量的差异
+				angles[curve->Point(p)] = 360 - angles[curve->Point(p)];  //曲线段里的点对应的360-角度(不考虑相邻面法向量) 其他为-45
+		}
+
+#if DEBUG_FOR_CONVEXITY
+		for (int p = 0; p < num; p++)
+		{
+			if (angles[p] >= 190)
+				angles[p] = 1;
+			else
+				if (angles[p] <= 170)
+					angles[p] = -1;
+				else
+					angles[p] = 0;
+		}
+		DebugUtil::ShowColorfulActor(CROWN_CURRENT, angles, -1, 1, 3, false); //Debug显示
+		DebugUtil::ShowRenderer(CROWN_CURRENT);
+#endif
+#pragma endregion 查看法向量差异，判断凹凸性
+
+#pragma region 先识别凹区域，然后通过凹区域区域向两侧发散，得到待修补区域	
+
+		angles2.SetSize(crown->Points().Size());  
+		angles2.ResetValue(-45);  
+		angles3.SetSize(crown->Points().Size());
+		angles3.ResetValue(-2);
+		angles4.SetSize(crown->Points().Size());
+		angles4.ResetValue(0);
+		angles5.SetSize(crown->Points().Size());
+		angles5.ResetValue(0);
+		caveMarker.SetSize(num);
+		caveMarker.ResetValue(0);
+	};
+#pragma endregion 定义分析凹凸性方法
+
+
+
+
+
+identfyCave(30, 4);
+	auto identfyCave = [&](int step, int mergerange)
+		//step: 从所选点，左右顺序跳过step数量的点，取三角形角度
+		//mergerange: 考虑噪声，取凹陷区域时可左右延续若干点
+		//			TODO: 注意：延续的点可能干扰后面修补位置。所以修补时需要特别考虑
+	{
+		angles2.SetSize(crown->Points().Size());
+		angles2.ResetValue(-1);
+		//角度计算
+		for (int p = 0; p < num; p++)
+			angles2[curve->Point(p)] = acm.Angle(p, step);
+
+#if DEBUG_FOR_CONVEXITY
+		//debug查看角度
+		DebugUtil::ShowColorfulActor(CROWN_CURRENT, angles2, 0, 360, 9, false); //Debug显示
+		char txt[32];
+		sprintf_s(txt, "test angle %d", step);
+		DebugUtil::ShowRenderer(CROWN_CURRENT, txt);
+#endif
+		angles3.SetSize(crown->Points().Size());
+		//去除噪声
+		for (int p = 0; p < num; p++)
+		{
+			auto id0 = curve->Point(p);		//初始angles3都为-2,id0为曲线段中在牙冠数据对应点的索引号
+			angles3[id0] = angles2[2];  //在angles3中的索引为曲线段中在牙冠数据对应点的索引号 值对应的是angles2[2]的值 多为-1
+			for (int c = -2; c <= 2; c++)  //-2 到 0循环
+			{
+				if (c == 0) continue;    
+				auto id = curve->Point((p + c + num) % num);  //取余控制在num之内  即每次选取到该点的邻近两个点的曲线段中对应索引
+				angles3[id0] = std::max(angles3[id0], angles2[id]);   //选取angles3和相邻angles2的最大值。确保不小于-2
+			}
+		}
+		//标记凹陷区域    //法向量小于60（好像是小于240） angles3为0     法向量大于240 angles3为2 cvmarker为2 
+		for (int p = 0; p < num; p++)
+		{
+			auto id = curve->Point(p);
+			if (normAngles[id] < 60)//基于法向量判断凹凸点 (考虑误差，应小于90度)
+				angles3[id] = 0;
+			else
+				if (angles3[id] > 240)
+				{
+					angles3[id] = 2;
+					caveMarker[p] = 2;
+				}
+				else angles3[id] = 0;
+		}
+#if DEBUG_FOR_CONVEXITY
+		//效果显示
+		DebugUtil::ShowColorfulActor(CROWN_CURRENT, angles3, 0, -1, 2, false); //Debug显示
+		txt[32];
+		sprintf_s(txt, "find cave per step %d", step);
+		DebugUtil::ShowRenderer(CROWN_CURRENT, txt);
+#endif
+	};
+	
+	
+	
+	
+	
+markCaveBottom();
+	//相邻凹陷的距离不能太近
+	//TODO:针对不同的凹陷检查区间，应该有不同的最小距离
+	int minCaveBottomDistance = 8;
+	//基于区域标记，提取凹陷列表
+	auto markCaveBottom = [&]()
+	{
+		//找到所有凹区域的起始区域和结束区域
+		//四个数字分别表示 出口开始位置，底部开始位置，底部结束位置，出口结束位置
+		caveList.clear();
+		cavenum = 0;
+		ACEFloatDataArray cavePosition;
+		cavePosition.SetSize(num);
+		cavePosition.ResetValue(0);
+
+		//标记起止点  caveMarker标记点对应num中大于240度的点
+		cavePosition[0] = caveMarker[0] - caveMarker[num - 1];
+		for (int p = 1; p < num; p++)
+		{
+			cavePosition[p] = caveMarker[p] - caveMarker[p - 1];
+		}
+		//找到第一个凹陷的底部起始区域
+		int first = -1;;
+		for (int p = 0; p < num; p++)
+		{
+			if (cavePosition[p] > 0)
+			{
+				first = p;
+				break;
+			}
+		}
+		if (first == -1) return;
+
+		//找到所有凹陷的底部起止区域
+		int pos = (first + 1) % num;
+		newcave(-1, first, -1, -1);
+		int lastStop = -1;
+		while (pos != first)
+		{
+			if (cavePosition[pos] > 0)
+			{
+				if (lastStop > 0) //检查是否需要合并
+				{
+					int diff = (pos - lastStop + num) % num;
+					if (diff >= minCaveBottomDistance)
+					{
+						newcave(-1, pos, -1, -1);
+					}
+					else
+					{
+						caveList[cavenum - 1].Bottom2 = -1;
+					}
+				}
+				else newcave(-1, pos, -1, -1);
+
+			}
+			else if (cavePosition[pos] < 0)
+			{
+				caveList[cavenum - 1].Bottom2 = pos;
+				lastStop = pos;
+			}
+			pos = (pos + 1) % num;
+		}
+	};

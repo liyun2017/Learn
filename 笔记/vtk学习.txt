@@ -1,0 +1,139 @@
+https://blog.csdn.net/www_doling_net/article/details/8532742 CSDN 东灵工作室
+
+安装需CMake
+VTK对类的命名都是以小写的vtk开头，每个类的关键字的首字母大写
+
+vtkSmartPointer<vtkRenderWindow> renWin =vtkSmartPointer<vtkRenderWindow>::New();
+用智能指针定义了一个类型为vtkRenderWindow的对象，这是VTK的类实例化对象的基本方法。
+因为VTK里每个类的构造函数都定义为保护成员，因此你不能够用以下的语句来定义一个VTK对象：
+
+
+vtkClassExampleinstance; //vtkClassExample这个类当然是不存在的，只是说明问题而已
+要不然会提示如下的错误：errorC2248: vtkClassExample:: vtkClassExample: cannot access protected memberdeclared in class vtkClassExample
+所以，要构造VTK的对象可以用第5行的方法，或者用以下的方法：
+vtkRenderWindow*renWin = vtkRenderWindow::New();
+
+renWin->Render();  调用vtkRenderWindow里的方法显示并渲染VTK窗口。 Render 渲染着色
+
+
+VTK基础概念：
+#include "vtkSmartPointer.h"
+#include "vtkRenderWindow.h"  
+#include "vtkRenderer.h" 
+#include "vtkRenderWindowInteractor.h"
+#include "vtkInteractorStyleTrackballCamera.h"
+#include "vtkCylinderSource.h"
+#include "vtkPolyDataMapper.h" 
+#include "vtkActor.h"   
+int   main()
+{
+//vtkCylinderSource派生自vtkPolyDataAlgorithm，生成的数据类型是PolyData(vtkPolyData)，主要生成一个中心在渲染场景原点的柱体，其长轴沿着Y轴，柱体的高度截面半径等都可以任意指定。
+vtkSmartPointer<vtkCylinderSource> cylinder = vtkSmartPointer<vtkCylinderSource>::New();
+cylinder->SetHeight( 3.0 );   //设置柱体的高
+cylinder->SetRadius( 1.0 );   //设置柱体横截面的半径
+cylinder->SetResolution( 10 );   //设置柱体横截面的等边多边形的边数。转动一下柱体，然后数数柱体横截面有多少条边。
+
+//vtkPolyDataMapper派生自类vtkMapper，渲染多边形几何数据(vtkPolyData)，将输入的数据转换为几何图元(点、线、多边形)进行渲染。
+vtkSmartPointer<vtkPolyDataMapper> cylinderMapper =  vtkSmartPointer<vtkPolyDataMapper>::New();
+//tkPolyDataMapper::SetInputConnection()  VTK可视化管线的输入数据接口，对应的可视化管线输出数据的接口为GetOutputPort()；
+cylinderMapper->SetInputConnection( cylinder->GetOutputPort() );
+
+//vtkActor派生自vtkProp类，渲染场景中数据的可视化表达是通过vtkProp的子类负责的。
+//比如要渲染一个柱体，柱体的数据类型是vtkPolyData，数据要在场景中渲染时，不是直接把数据加入渲染场景就可以，待渲染的数据是以vtkProp的形式存在于渲染场景中。
+//三维空间中渲染对象最常用的vtkProp子类是vtkActor(表达场景中的几何数据)和vtkVolume(表达场景中的体数据)；二维空间中的数据则是用vtkActor2D表达。
+//vtkProp子类负责确定渲染场景中对象的位置、大小和方向信息。Prop依赖于两个对象(Prop一词来源于戏剧里的“道具”，在VTK里表示的是渲染场景中可以看得到的对象)
+//一个是Mapper(vtkMapper)对象，负责存放数据和渲染信息，另一个是属性(vtkProperty)对象，负责控制颜色、不透明度等参数。
+vtkSmartPointer<vtkActor> cylinderActor = vtkSmartPointer<vtkActor>::New();
+
+//VTK中定义了大量(超过50个)的Prop类，如vtkImageActor(负责图像显示)和vtkPieChartActor(用于创建数组数据的饼图可视化表达)。
+//其中的一些Prop内部直接包括了控制显示的参数和待渲染数据的索引，因此并不需要额外的Property和Mapper对象。
+//vtkActor的子类vtkFollower可以自动的更新方向信息以保持始终面向一个特定的相机。
+//这样无论怎样旋转，三维场景中的广告板(Billboards)或者文本都是可见的。
+//vtkActor的子类vtkLODActor可以自动改变自身的几何表达来实现需要达到的交互帧率。
+//vtkProp3D的子类vtkLODProp3D则是通过从许多Mapper(可以是体数据的Mapper和几何数据的Mapper集合)中进行选择来实现交互。
+//vtkAssembly建立Actor的等级结构以便在整个结构平移、旋转或者缩放时能够更合理的控制变换。
+//vtkActor::SetMapper()——设置生成几何图元的Mapper。即连接一个Actor到可视化管线的末端(可视化管线的末端就是Mapper)。
+cylinderActor->SetMapper( cylinderMapper );
+
+//vtkRenderer：负责管理场景的渲染过程。组成场景的所有对象包括Prop，照相机(Camera)和光照(Light)都被集中在一个vtkRenderer对象中。
+//一个vtkRenderWindow中可以有多个vtkRenderer对象，而这些vtkRenderer可以渲染在窗口中不同的矩形区域中(即视口)，或者覆盖整个窗口区域。
+vtkSmartPointer<vtkRenderer> renderer = vtkSmartPointer<vtkRenderer>::New();
+renderer->AddActor( cylinderActor );  //添加vtkProp类型的对象到渲染场景中。
+//该方法是从vtkRenderer的父类vtkViewport继承的，用于设置渲染场景的背景颜色，用R、G、B的格式设置，三个分量的取值为0.0~ 1.0。(0.0,0.0, 0.0)为黑色，(1.0,1.0, 1.0)为白色。
+//除了可以设置单一的背景颜色之外，还可以设置渐变的背景颜色，vtkViewport::SetBackground2()用于设置渐变的另外一种颜色，但是要使背景颜色渐变生效或者关闭，必须调用以下的方法：
+//vtkViewport::SetGradientBackground(bool) ——参数为0是关闭，反之，打开。
+//vtkViewport::GradientBackgroundOn()—— 打开背景颜色渐变效果，相当于调用方法SetGradientBackground(1)。
+//vtkViewport::GradientBackgroundOff() ——关闭背景颜色渐变效果。相当于调用方法SetGradientBackground(0)。
+renderer->SetBackground( 0.1, 0.2, 0.4 );
+
+//vtkRenderWindow：将操作系统与VTK渲染引擎连接到一起。不同平台下的vtkRenderWindow子类负责本地计算机系统中窗口创建和渲染过程管理。
+//当使用VTK开发应用程序时，你只需要使用平台无关的vtkRendererWindow类，运行时，系统会自动替换为平台相关的vtkRendererWindow子类。
+//比如，Windows下运行上述的VTK程序，实际创建的是vtkWin32OpenGLRenderWindow(vtkRenderWindow的子类)对象。
+//vtkRenderWindow中包含了vtkRenderer集合、渲染参数，如立体显示（Stereo），反走样，运动模糊（Motion Blur）和焦点深度（Focal Depth）等。
+vtkSmartPointer<vtkRenderWindow> renWin = vtkSmartPointer<vtkRenderWindow>::New();
+renWin->AddRenderer( renderer );  //加入vtkRenderer对象
+renWin->SetSize( 300, 300 );  //该方法是从vtkRenderWindow的父类vtkWindow继承过来的，用于设置窗口的大小，以像素为单位。
+
+//vtkRenderWindowInteractor：提供平台独立的响应鼠标、键盘和时钟事件的交互机制，
+//通过VTK的Command/Observer设计模式将监听到的特定平台的鼠标、键盘和时钟事件交由vtkInteractorObserver或其子类，如vtkInteractorStyle进行处理。
+//vtkInteractorStyle等监听这些消息并进行处理以完成旋转、拉伸和放缩等运动控制。
+//vtkRenderWindowInteractor自动建立一个默认的3D场景交互器样式(Interactor Style)：vtkInteractorStyleSwitch，当然你也可以选择其他的交互器样式，或者是创建自己的交互器样式。
+//在本例中，是选择了其他的交互器样式来替代默认的：vtkInteractorStyleTrackballCamera。
+vtkSmartPointer<vtkRenderWindowInteractor> iren = vtkSmartPointer<vtkRenderWindowInteractor>::New();
+iren->SetRenderWindow(renWin);   //设置渲染窗口，消息是通过渲染窗口捕获到的，所以必须要给交互器对象设置渲染窗口。
+vtkSmartPointer<vtkInteractorStyleTrackballCamera> style = vtkSmartPointer<vtkInteractorStyleTrackballCamera>::New();
+iren->SetInteractorStyle(style);  //定义交互器样式，默认的交互样式为vtkInteractorStyleSwitch。
+iren->Initialize();  //为处理窗口事件做准备，交互器工作之前必须先调用这个方法进行初始化。
+iren->Start();  //开始进入事件响应循环，交互器处于等待状态，等待用户交互事件的发生。进入事件响应循环之前必须先调用Initialize()方法。
+
+return 0;
+}
+//当我们去看舞台剧的时候，我们坐在台下，展现在我们面前的是一个舞台，舞台上有各式的灯光，各样的演员。
+//演员出场的时候肯定是会先化妆，有些演员可能会打扮成高富帅，有些演员可能会化妆成白富美。观众有时还会与台上的演员有一定的互动。
+
+//整个剧院就好比VTK程序的渲染窗口(vtkRenderWindow)；
+//舞台就相当于渲染场景(vtkRenderer)；
+//而那些高富帅、白富美就是我们程序中的Actor(有些文献翻译成“演员”，有些翻译成“角色”，这里我们不作翻译)；
+//台上的演员与台下观众的互动可以看成是程序的交互(vtkRenderWindowInteractor)；
+//演员与观众的互动方式有很多种，现场的观众可以直接上台跟演员们握手拥抱，电视机前的可以发短信，电脑、移动终端用户等可以微博关注、加粉等等，这就好比我们程序里的交互器样式(vtkInteractorStyle)；
+//舞台上的演员我们都能一一分辨出来，不会把高富帅弄混淆，是因为他们化的妆、穿的服饰都不一样，这就相当于我们程序里vtkActor的不同属性(vtkProperty)；
+//台下观众的眼睛可以看作是vtkCamera，前排的观众因为离得近，看台上演员会显得比较高大，而后排的观众看到的会显得小点，每个观众看到的东西在他的世界里都是唯一的，所以渲染场景Renderer里的vtkCamera对象也是只有一个；
+//舞台上的灯光可以有多个，所以渲染场景里的vtkLight也存在多个。
+
+vtkActor及相关属性:
+//数据渲染时不是直接加入渲染场景，而是以vtkProp的形式存在的
+//vtkProp是任何存在于渲染窗口的对象的父类，包括二维或者三维的对象。在渲染窗口里能够看得到的对象(这些对象都称作Prop)，都是从vtkProp继承过来的。
+//vtkProp3D从vtkProp直接派生，是对象在三维渲染场景中的表达形式。
+//把一个对象放置在三维场景时，首先要考虑的是这个对象到底要放在场景中的哪个位置，摆放的方向如何等等，这些信息在vtkProp3D内部用一个4×4的矩阵来表示。
+//默认构造的vtkProp3D对象原点为(0,0,0)，放置的位置为(0,0,0)，放置的方向为(0,0,0)，用户自定义的矩阵或者变换为空。
+//以下是vtkProp3D定义的用于放置vtkProp3D对象的方法：
+//SetScale (double) / GetScale ()：设置/获取各向同性的缩放比例。
+//SetScale (double, double,double) / GetScale (double)：设置/获取各同异性的缩放比例。
+//RotateX (double) / RotateY (double) / RotateZ (double)：分别绕X、Y、Z轴旋转指定角度。
+//RotateWXYZ (double, double,double, double)：绕指定的方向旋转指定的角度，第一个参数表示旋转角度，后三个参数确定一个方向。GetOrientationWXYZ()用于获取对应的数据。
+//SetOrientation (double, double,double) / GetOrientation ()：设置vtkProp3D对象的方向。先绕Z轴旋转，然后绕X轴，最后绕Y轴旋转，从而确定vtkProp3D对象的方向。
+//AddOrientation (double, double,double)：在vtkProp3D对象的当前方向增加一个给定的偏移。
+//SetPosition (double, double,double) / GetPosition ()：在世界坐标系下，指定/获取vtkProp3D对象的位置。
+//AddPosition (double, double,double)：在vtkProp3D对象的当前位置增加一个偏移。
+//SetOrigin (double, double,double ) / GetOrigin ()：设置/获取vtkProp3D对象的原点。
+
+//Prop依赖于两个对象，一个是Mapper(vtkMapper)对象，负责存放数据和渲染信息，另一个是属性(vtkProperty)对象，负责控制颜色、不透明度等参数。
+//SetMapper (vtkMapper *)：设置定义Actor几何形状的Mapper。
+//SetProperty (vtkProperty *)：设置Actor的属性，包括表面属性，如环境光(Ambient)散射光(Diffuse)镜面光(Specular)颜色、透明度等；纹理映射；点的大小，线的宽度设置等。
+//每一个Actor都有一个属性对象(vtkProperty的实例)与之相关联，如果没有给Acttor指定相应的属性(3.1.1的例子就没有指定)，VTK会指定默认的属性对象。
+//多个Actor可以共享一个属性对象。请看以下的代码：
+
+////控制Actor属性方法一：先获取Actor的Property对象，然后设置对应的参数。
+//调用以下方法时，应该先包括头文件：#include“vtkProperty.h”
+//改变cylinderActor颜色为红色，可以直接调用SetColor()，也可调用SetDiffuseColor()。
+cylinderActor->GetProperty()->SetColor(1.0,0.0,0.0);
+//cylinderActor->GetProperty()->SetDiffuseColor(1.0,0.0,0.0);
+
+//控制Actor属性的方法二：先实例化vtkProperty对象，然后加入到Actor里。
+vtkSmartPointer<vtkProperty> cylinderProperty = vtkSmartPointer<vtkProperty>::New();
+cylinderProperty->SetColor(1.0,0.0,0.0);
+cylinderActor->SetProperty(cylinderProperty);
+//以上两种方法都可以改变一个Actor的属性，第一种方法相对来说比较简单，直接设置即可，第二种方法则需要先实例化一个vtkProperty对象，
+//但第二种方法比较灵活，而且如果想把多个Actor设置成同一属性时，所需的代码是最少的。
+
+

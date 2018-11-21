@@ -1,0 +1,88 @@
+﻿加载数据		void CACEDentalDlg::OnBnClickedOpenFile() //MFC中的Dlg类 Clifked控件
+				//打开样本文件夹
+				m_smartJaw->OpenJaw("sample");
+								
+				//shared_ptr是模板类，是通过指针保持对象共享所有权的智能指针
+				//SmartJawService是组件接口类，管理SmartJaw算法处理与显示交互服务
+				//m_smartJaw是模板类shared_ptr的对象
+				boost::shared_ptr<SmartJawService> m_smartJaw;
+				 
+				 //OpenJaw是SmartJawService的成员函数
+				 void SmartJawService::OpenJaw(std::string projectPath)
+				 {				 
+					//_isOpen是SmartJawService类中的私有变量，标志判断位
+					if (_isOpen)  
+					{
+						if (_smartJawData->SameProject(projectPath))
+						{
+							//TODO: alert here
+							return;
+						}
+						Close();
+					}
+
+					if (_isOpen) throw "Current Project Not Closed! Can not open new project!";
+					
+					//boost::shared_ptr<SmartJaw> _smartJawData = nullptr; 
+					//void SmartJaw::Init() 初始化
+					_smartJawData->Init();
+					
+					//void SmartJaw::Load(std::string  projectPath) 
+					//Load加载过程：Reset重置 Init初始化 +"//"更新地址 ReLoad重新加载
+					//重新加载过程：	ReloadJaw();	ReloadCrown();	ReloadFixedCrown();	ReloadTooth();
+					//ReloadJaw：	LoadUpper(_prjectPath + "upperJaw.stl"); 可以加载上或下整牙模型
+					//ReloadCrown();	加载牙冠模型 32次循环读取32颗牙
+					//ReloadFixedCrown();	加载经过修复的牙冠模型 
+					//ReloadTooth();	加载合并了牙根的牙齿模型
+					_smartJawData->Load(projectPath);
+					
+					//boost::shared_ptr<SmartJawDisplayService> _display = nullptr;;
+					//SmartJawDisplayService负责基于VTK的数据显示管理
+					//void SmartJawDisplayService::Open(){	_smartJawData->Reload();	Update();	}
+					//boost::shared_ptr<SmartJawVzData> _smartJawData = nullptr;
+					//SmartJawVzData可视化牙颌数据  void SmartJawVzData::Reload()
+					//void SmartJawDisplayService::Update()
+						{
+							//_aceIteractor  boost::shared_ptr<ACEInteractorSimple> _aceIteractor = nullptr;
+							//GetRenderer	 vtkSmartPointer<vtkRenderer> ACEInteractorSimple::GetRenderer()
+							//RemoveAllViewProps  void RemoveAllViewProps(void);
+							//Remove all props from the list of props.
+							_aceIteractor->GetRenderer()->RemoveAllViewProps();
+							updateJaw();
+							updateJawFix();
+							updateCrown();
+							updateRoot();
+							auto c = _aceIteractor->GetRenderer()->GetActiveCamera();
+
+							_aceIteractor->Refresh();
+						}
+					_display->Open();
+					
+				}
+
+				
+				
+保存结果：	void CACEDentalDlg::OnBnClickedProcess7()
+				{
+					m_smartJaw->SaveCurrentModel();
+				}
+				
+				void SmartJawService::SaveCurrentModel()
+				{
+					//
+					_smartJawData->SaveJaw(BOTH);
+					
+					std::vector<ACEIdType> v;
+
+					////获得邻面模型
+					//auto model = _smartJawData->GetCrownModel(_currentToothIndex);
+
+					//获得牙根模型
+					auto model = _smartJawData->GetToothModel(_currentToothIndex);
+
+					ACESTLWriter writer;
+					std::string path = "Sample\\tmp_result\\" + std::to_string(_currentToothIndex) + ".stl";
+					writer.WriteSTLFile(path.c_str(), model);
+				}
+
+				
