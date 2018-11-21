@@ -1,0 +1,75 @@
+[2018-11-05 13:20:29] ShadowsocksR started
+[2018-11-05 13:20:39] [Error]connect to update server error
+[2018-11-05 13:29:53] System.Net.Sockets.SocketException (0x80004005): 远程主机强迫关闭了一个现有的连接。
+   在 System.Net.Sockets.Socket.EndReceive(IAsyncResult asyncResult)
+   在 Shadowsocks.Controller.Listener.ReceiveCallback(IAsyncResult ar)
+[2018-11-05 13:31:17] System.Net.Sockets.SocketException (0x80004005): 远程主机强迫关闭了一个现有的连接。
+   在 System.Net.Sockets.Socket.BeginReceive(Byte[] buffer, Int32 offset, Int32 size, SocketFlags socketFlags, AsyncCallback callback, Object state)
+   在 Shadowsocks.Controller.Listener.AcceptCallback(IAsyncResult ar)
+[2018-11-05 13:31:17] System.Net.Sockets.SocketException (0x80004005): 远程主机强迫关闭了一个现有的连接。
+   在 System.Net.Sockets.Socket.EndAccept(Byte[]& buffer, Int32& bytesTransferred, IAsyncResult asyncResult)
+   在 System.Net.Sockets.Socket.EndAccept(IAsyncResult asyncResult)
+   在 Shadowsocks.Controller.Listener.AcceptCallback(IAsyncResult ar)
+[2018-11-05 13:31:17] System.Net.Sockets.SocketException (0x80004005): 远程主机强迫关闭了一个现有的连接。
+   在 System.Net.Sockets.Socket.EndAccept(Byte[]& buffer, Int32& bytesTransferred, IAsyncResult asyncResult)
+   在 System.Net.Sockets.Socket.EndAccept(IAsyncResult asyncResult)
+   在 Shadowsocks.Controller.Listener.AcceptCallback(IAsyncResult ar)
+[2018-11-05 13:31:17] System.Net.Sockets.SocketException (0x80004005): 远程主机强迫关闭了一个现有的连接。
+   在 System.Net.Sockets.Socket.EndAccept(Byte[]& buffer, Int32& bytesTransferred, IAsyncResult asyncResult)
+   在 System.Net.Sockets.Socket.EndAccept(IAsyncResult asyncResult)
+   在 Shadowsocks.Controller.Listener.AcceptCallback(IAsyncResult ar)
+[2018-11-05 13:31:17] System.Net.Sockets.SocketException (0x80004005): 远程主机强迫关闭了一个现有的连接。
+   在 System.Net.Sockets.Socket.EndAccept(Byte[]& buffer, Int32& bytesTransferred, IAsyncResult asyncResult)
+   在 System.Net.Sockets.Socket.EndAccept(IAsyncResult asyncResult)
+   在 Shadowsocks.Controller.Listener.AcceptCallback(IAsyncResult ar)
+[2018-11-05 13:31:17] System.Net.Sockets.SocketException (0x80004005): 远程主机强迫关闭了一个现有的连接。
+   在 System.Net.Sockets.Socket.EndAccept(Byte[]& buffer, Int32& bytesTransferred, IAsyncResult asyncResult)
+   在 System.Net.Sockets.Socket.EndAccept(IAsyncResult asyncResult)
+   在 Shadowsocks.Controller.Listener.AcceptCallback(IAsyncResult ar)
+[2018-11-05 13:31:17] System.Net.Sockets.SocketException (0x80004005): 远程主机强迫关闭了一个现有的连接。
+   在 System.Net.Sockets.Socket.EndAccept(Byte[]& buffer, Int32& bytesTransferred, IAsyncResult asyncResult)
+   在 System.Net.Sockets.Socket.EndAccept(IAsyncResult asyncResult)
+   在 Shadowsocks.Controller.Listener.AcceptCallback(IAsyncResult ar)
+[2018-11-05 13:31:17] System.Net.Sockets.SocketException (0x80004005): 远程主机强迫关闭了一个现有的连接。
+   在 System.Net.Sockets.Socket.EndAccept(Byte[]& buffer, Int32& bytesTransferred, IAsyncResult asyncResult)
+   在 System.Net.Sockets.Socket.EndAccept(IAsyncResult asyncResult)
+   在 Shadowsocks.Controller.Listener.AcceptCallback(IAsyncResult ar)
+[2018-11-05 13:31:17] System.Net.Sockets.SocketException (0x80004005): 远程主机强迫关闭了一个现有的连接。
+   在 System.Net.Sockets.Socket.EndAccept(Byte[]& buffer, Int32& bytesTransferred, IAsyncResult asyncResult)
+   在 System.Net.Sockets.Socket.EndAccept(IAsyncResult asyncResult)
+   在 Shadowsocks.Controller.Listener.AcceptCallback(IAsyncResult ar)
+[2018-11-05 13:31:17] System.Net.Sockets.SocketException (0x80004005): 远程主机强迫关闭了一个现有的连接。
+   在 System.Net.Sockets.Socket.EndAccept(Byte[]& buffer, Int32& bytesTransferred, IAsyncResult asyncResult)
+   在 System.Net.Sockets.Socket.EndAccept(IAsyncResult asyncResult)
+   在 Shadowsocks.Controller.Listener.AcceptCallback(IAsyncResult ar)
+[2018-11-05 13:31:17] System.Net.Sockets.SocketException (0x80004005): 远程主机强迫关闭了一个现有的连接。
+   在 System.Net.Sockets.Socket.EndAccept(Byte[]& buffer, Int32& bytesTransferred, IAsyncResult asyncResult)
+   在 System.Net.Sockets.Socket.EndAccept(IAsyncResult asyncResult)
+   在 Shadowsocks.Controller.Listener.AcceptCallback(IAsyncResult ar)
+[2018-11-05 13:31:17] System.Net.Sockets.SocketException (0x80004005): 远程主机强迫关闭了一个现有的连接。
+   在 System.Net.Sockets.Socket.EndAccept(Byte[]& buffer, Int32& bytesTransferred, IAsyncResult asyncResult)
+   在 System.Net.Sockets.Socket.EndAccept(IAsyncResult asyncResult)
+   在 Shadowsocks.Controller.Listener.AcceptCallback(IAsyncResult ar)
+[2018-11-05 13:31:17] System.Net.Sockets.SocketException (0x80004005): 远程主机强迫关闭了一个现有的连接。
+   在 System.Net.Sockets.Socket.EndAccept(Byte[]& buffer, Int32& bytesTransferred, IAsyncResult asyncResult)
+   在 System.Net.Sockets.Socket.EndAccept(IAsyncResult asyncResult)
+   在 Shadowsocks.Controller.Listener.AcceptCallback(IAsyncResult ar)
+[2018-11-05 13:31:17] System.Net.Sockets.SocketException (0x80004005): 远程主机强迫关闭了一个现有的连接。
+   在 System.Net.Sockets.Socket.EndAccept(Byte[]& buffer, Int32& bytesTransferred, IAsyncResult asyncResult)
+   在 System.Net.Sockets.Socket.EndAccept(IAsyncResult asyncResult)
+   在 Shadowsocks.Controller.Listener.AcceptCallback(IAsyncResult ar)
+[2018-11-05 13:31:17] System.Net.Sockets.SocketException (0x80004005): 远程主机强迫关闭了一个现有的连接。
+   在 System.Net.Sockets.Socket.EndAccept(Byte[]& buffer, Int32& bytesTransferred, IAsyncResult asyncResult)
+   在 System.Net.Sockets.Socket.EndAccept(IAsyncResult asyncResult)
+   在 Shadowsocks.Controller.Listener.AcceptCallback(IAsyncResult ar)
+[2018-11-05 13:31:17] System.Net.Sockets.SocketException (0x80004005): 远程主机强迫关闭了一个现有的连接。
+   在 System.Net.Sockets.Socket.EndAccept(Byte[]& buffer, Int32& bytesTransferred, IAsyncResult asyncResult)
+   在 System.Net.Sockets.Socket.EndAccept(IAsyncResult asyncResult)
+   在 Shadowsocks.Controller.Listener.AcceptCallback(IAsyncResult ar)
+[2018-11-05 13:31:56] System.Net.Sockets.SocketException (0x80004005): 远程主机强迫关闭了一个现有的连接。
+   在 System.Net.Sockets.Socket.EndReceive(IAsyncResult asyncResult)
+   在 Shadowsocks.Controller.Listener.ReceiveCallback(IAsyncResult ar)
+[2018-11-05 14:52:58] ShadowsocksR started
+[2018-11-05 14:53:10] [Error]connect to update server error
+[2018-11-07 16:40:56] ShadowsocksR started
+[2018-11-07 16:41:07] [Error]connect to update server error

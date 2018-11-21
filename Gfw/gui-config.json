@@ -1,0 +1,41 @@
+{
+	"configs" : [
+		{
+			"remarks" : "",
+			"server" : "45.63.91.31",
+			"server_port" : 23990,
+			"password" : "9686eb7ee427e8fa75b358f3cae082ec",
+			"method" : "aes-256-cfb",
+			"obfs" : "",
+			"obfsparam" : "",
+			"remarks_base64" : "",
+			"tcp_over_udp" : false,
+			"udp_over_tcp" : false,
+			"protocol" : "origin",
+			"obfs_udp" : false,
+			"enable" : true,
+			"id" : "34-9B-C8-04-96-6D-37-80-16-3D-55-DB-AD-6C-43-08"
+		}
+	],
+	"index" : 0,
+	"random" : false,
+	"global" : false,
+	"enabled" : true,
+	"shareOverLan" : true,
+	"isDefault" : false,
+	"localPort" : 1080,
+	"pacUrl" : null,
+	"useOnlinePac" : false,
+	"reconnectTimes" : 3,
+	"randomAlgorithm" : 0,
+	"TTL" : 0,
+	"proxyEnable" : false,
+	"proxyType" : 0,
+	"proxyHost" : "",
+	"proxyPort" : 0,
+	"proxyAuthUser" : "",
+	"proxyAuthPass" : "",
+	"authUser" : "",
+	"authPass" : "",
+	"autoban" : false
+}
