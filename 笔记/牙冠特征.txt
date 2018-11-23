@@ -1,0 +1,33 @@
+牙冠分析
+m_smartJaw ->PrepareForCrownAnalysis();
+	void SmartJawService::PrepareForCrownAnalysis()
+{
+	_display->SetDefaultInteractorStyle();
+	_display->ShowCrowns();
+	if (_currentToothIndex < 0) return;
+	auto crown = _smartJawData->GetCrownModel(_currentToothIndex);
+	if (!crown.get()) return;
+
+	//曲率
+	GetMeshCurvature(
+		crown,
+		*_smartJawData->CrownMeanCurvature[_currentToothIndex],
+		*_smartJawData->CrownGauseCurvature[_currentToothIndex],
+		*_smartJawData->CrownMinCurvature[_currentToothIndex],
+		*_smartJawData->CrownDiffCurvature[_currentToothIndex]
+		);
+
+	//点的曲率信息转换为面得曲率信息  面的曲率信息为三点曲率信息的均值
+	ACEAlgorithm::PointMarkerToCellMarker(crown,
+		*_smartJawData->CrownMeanCurvature[_currentToothIndex],
+		*_smartJawData->CrownCellCurvature1[_currentToothIndex]
+		);
+
+	//
+	ACEAlgorithm::AverageCellMarkers(crown,
+		*_smartJawData->CrownCellCurvature1[_currentToothIndex],
+		*_smartJawData->CrownCellCurvature[_currentToothIndex], 1);
+
+	_display->ShowCrownCurvature();
+	return;
+}
