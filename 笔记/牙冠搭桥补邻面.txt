@@ -1,0 +1,61 @@
+m_smartJaw->CreateCrownBridge();
+bug，找到的top1与 top2一样的，或者bottom1和bottom2一样的，导致无法搭桥，	
+		identfyCave(15, 4); //	identfyCave(30, 4);  太小的原因。
+
+
+
+void SmartJawService::CreateCrownBridge()
+{
+	//得到了补过小洞的Crown数据，即原数据和小洞数据
+	auto crown = dataManager[_currentToothIndex].GetMergeData();
+	
+	//计算边缘
+	auto _points = crown->Points();
+	int L_1 = 0, L_2 = 0;
+	int	R_1 = 0, R_2 = 0;
+	boost::shared_ptr<ACEMeshHoles> holes = boost::make_shared<ACEMeshHoles>(crown);
+	holes->Build();
+	assert(holes->NumOfCloseHoles() == 1); 
+	auto curve = holes->GetHoleCurve(holes->GetMaxHoleId());  //找到最大的洞的曲线
+	std::vector<int> loop = curve->GetVector();    //曲线段的点
+
+	//获得搭桥点
+	L_1 = std::find(loop.begin(), loop.end(), _smartJawData->BridgePoint_L[_currentToothIndex][0]) - loop.begin(); 
+	R_1 = std::find(loop.begin(), loop.end(), _smartJawData->BridgePoint_R[_currentToothIndex][0]) - loop.begin(); 
+	L_2 = std::find(loop.begin(), loop.end(), _smartJawData->BridgePoint_L[_currentToothIndex][1]) - loop.begin(); 
+	R_2 = std::find(loop.begin(), loop.end(), _smartJawData->BridgePoint_R[_currentToothIndex][1]) - loop.begin(); 
+
+	auto points = crown->Points();
+	
+	//搭桥
+	boost::shared_ptr<AdjcaentProcess> adj = boost::make_shared<AdjcaentProcess>(crown, loop);
+	if (R_1 != -1 && L_1 != -1){
+		//寻找R->L之间的最高点 h = ylim - (pL_y + pR_y) / 2
+		float ylim1 = 0.0f;
+		for (int i = L_1; i != R_1; i = (i + 1) % loop.size())
+			ylim1 = std::abs(points[loop[i]].Value[1]) > ylim1 ? std::abs(points[loop[i]].Value[1]) : ylim1;
+		float h1 = ylim1 - std::abs((points[loop[R_1]].Value[1] + points[loop[L_1]].Value[1]) / 2.0);
+		//搭桥
+		dataManager[_currentToothIndex].Push(adj->CrossBridge(L_1, R_1, h1 / 2));
+		int n = dataManager[_currentToothIndex].Size();
+		_smartJawData->SetFixedBridgeCrownModel(0, _currentToothIndex, dataManager[_currentToothIndex].GetData(n - 1));
+	}
+		
+	if (R_2 != -1 && L_2 != -1){
+		//寻找R->L之间的最高点 h = ylim - (pL_y + pR_y) / 2
+		float ylim2 = 0.0f;
+		for (int i = L_2; i != R_2; i = (i + 1) % loop.size())  
+			ylim2 = std::abs(points[loop[i]].Value[1]) > ylim2 ? std::abs(points[loop[i]].Value[1]) : ylim2;
+		float h2 = ylim2 - std::abs((points[loop[R_2]].Value[1] + points[loop[L_2]].Value[1]) / 2.0);
+
+		dataManager[_currentToothIndex].Push(adj->CrossBridge(L_2, R_2, h2 / 2));
+		int n = dataManager[_currentToothIndex].Size();
+		_smartJawData->SetFixedBridgeCrownModel(1, _currentToothIndex, dataManager[_currentToothIndex].GetData(n-1));
+	}
+	
+	//更新显示
+	if ((R_1 != -1 && L_1 != -1) || (R_2 != -1 && L_2 != -1)){
+		_smartJawVzData->ReloadCrownFixBridge();
+		_display->updateCrownFix();
+	}
+}

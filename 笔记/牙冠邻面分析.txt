@@ -82,14 +82,25 @@ float ACECurveMeasurement::AngleControlXY(int p1, int p2, int p3)
 
 
 #pragma region 对大型凹陷进行分析
-	analyze();    
-	maxFailure = 2;
-	thresholdA = 0.1;
+	analyze();      分析凹凸性-》找到最大的孔区域，获取曲线段里以及对应的点
+	maxFailure = 2;    
+	thresholdA = 0.1;    
 
-	caveMarker.ResetValue(0);
-	identfyCave(30, 4);
-	markCaveBottom();
-	success = checkCaveBottom();
+	caveMarker.ResetValue(0);   caveMarker标记点对应num中小于法向量，大于角度阈值的点
+	identfyCave(30, 4);	定义识别凹陷底部的方法：
+						1.选取凹陷点，计算其与相隔step的两个凹陷点进行角度计算，角度计算方法为三个点垂直XY平面的夹角。
+						2.去除噪声，考虑相邻凹陷的索引
+						3.标记凹陷区域，法向量小于60的不为凹陷，角度大于250的为凹陷
+	markCaveBottom();	找到bottom1,bottom2
+				1.caveMarker标记的是凹陷， cavePosition 对应的是相邻边缘点是否同为凹陷，当前减去前一个
+				2.cavePosition中第一个大于0的为first，将bottom1设置为first，并调用newcave设置CaveList，cavenum++
+					开始边缘循环，当出现第二个大于0的时候，检查是否需要合并（仅当找到lastStop之后才合并）：
+								当两个大于0的位置距离大于阈值的时候，更新bottom1，调用newcave设置CaveList，cavenum++
+								当小于阈值的时候，合并，将bottom2设置为-1，调用newcave设置CaveList，cavenum++
+								当出现第一个小于0的时候，将bottom2设置为当前位置，即lastStop
+				3.bottom1代表的是平凹区域，当前减去前一个，凹减平，2-0=2
+				  bottom2代表的是凹平区域，平减凹，0-2=-2
+	success = checkCaveBottom();	  检查所有凹陷并检查其边界	
 
 	//TODO:IMPORTANT:这里还需要另外一个判断条件。
 	//原始凹陷区域的整体法向量与轮询到的点与凹陷区域内边界组成三角形的的法向量差异
@@ -107,7 +118,7 @@ float ACECurveMeasurement::AngleControlXY(int p1, int p2, int p3)
 	//	}
 	//}
 	if (success)
-		markCaveTop(false, false);
+		markCaveTop(false, false);   	//查找并识别凹陷上边界
 	crown = dataManager[_currentToothIndex].GetMergeData();
 
 #if 1//DEBUG_FOR_CONVEXITY
@@ -143,8 +154,8 @@ float ACECurveMeasurement::AngleControlXY(int p1, int p2, int p3)
 		int i = 0;
 		while ((caveList[i].Top2 - caveList[i].Top1 + n1) % n1 < 15) i++;
 		max_id = min_id = i;
-		int mid = mid = (caveList[i].Bottom1 + (caveList[i].Bottom2 - caveList[i].Bottom1 + lv.size()) % lv.size() / 2) % lv.size();
-		float aver = points[lv[mid]].Value[1];
+		int mid = mid = (caveList[i].Bottom1 + (caveList[i].Bottom2 - caveList[i].Bottom1 + lv.size()) % lv.size() / 2) % lv.size(); //找到bottom1和bottom2的中点
+		float aver = points[lv[mid]].Value[1];//得到Y坐标  value为{X,Y,Z} points.XYZ.X
 		float max_val, min_val;
 		max_val = min_val = aver;
 		i++;
@@ -519,7 +530,8 @@ crown = dataManager[_currentToothIndex].GetMergeData();
 		}
 	};
 
-	
+
+//最后一段处理
 findTopBetweenCave(caveList[i], caveList[i + 1], widtheRestrict);
 findTopBetweenCave(caveList[cavenum - 1], caveList[0], widtheRestrict);
 #pragma region 定义识别凹陷顶部的方法
@@ -644,6 +656,111 @@ findTopBetweenCave(caveList[cavenum - 1], caveList[0], widtheRestrict);
 	};
 
 	
+	
+
+BuildBridge(curve, caveList[i].Bottom1, caveList[i].Bottom2);
+void SmartJawService::BuildBridge(boost::shared_ptr<ACECurveOnMesh> curve, int idx1, int idx2){
+	auto crown = dataManager[_currentToothIndex].GetMergeData();
+	auto loop = curve->GetVector();
+	std::vector<int> lv;
+	
+	//vector loop中需要插入点（bottom1 bottom2需要加入进去），即利用lv来插
+	// Step1: idx1 -> idx2 加入lv
+	for (int i = idx1; i != idx2; i = (i + 1) % loop.size())
+		lv.push_back(loop[i]);
+	lv.push_back(loop[idx2]);
+	
+	
+	// Step2: idx2 -> idx1 插点,加入lv
+	auto points = crown->Points();
+	float *pd1 = points[loop[idx1]].Value, *pd2 = points[loop[idx2]].Value; //bottom1 bottom2的XYZ的坐标
+	int num = (idx2 - idx1 + loop.size()) % loop.size();
+	float delta[] = { (pd1[0] - pd2[0])/num, (pd1[1] - pd2[1])/num, (pd1[2] - pd2[2])/num };
+	// 插入num - 1个点
+	for (int i = 1; i < num; i++){
+		float newp[] = { pd2[0] + delta[0] * i, pd2[1] + delta[1] * i, pd2[2] + delta[2] * i };
+		int pid = crown->TryInsertPoint(newp);
+		lv.push_back(pid);
+	}
+
+	auto data = FixSmallHole(crown, lv, 0, num); // 0, num 分别为idx1, idx2的位置
+	dataManager[_currentToothIndex].Push(data);
+
+	// 测试用,若dataManager类导致ACEMeshHoles找不到洞，可能是FixSmallHole函数导致
+	auto mesh = dataManager[_currentToothIndex].GetMergeData();
+	auto holes = new ACEMeshHoles(mesh);
+	holes->Build();
+	assert(holes->NumOfCloseHoles() == 1);
+
+	//boost::shared_ptr<ACEMesh> acemesh = boost::make_shared<ACEMesh>(crown);
+	//ACEIdType new_numcell = crown->Cells().Size();
+	//for (int i = 0; i < new_numcell; i++)
+	//	acemesh->IncludeCell(i);
+	//ACEMeshDataToMatrix(acemesh, lv);
+
+	//ACESTLWriter writer;
+	//writer.WriteSTLFile("Sample\\test_smallhole.stl", crown);
+}
+
+
+	
+	
+ProcessBridgePoint(caveList[max_id], lv);
+void SmartJawService::ProcessBridgePoint(CavePosition &cave, const std::vector<int> lv){
+	auto crown = dataManager[_currentToothIndex].GetMergeData();
+	auto points = crown->Points();
+
+	// 再次判断凹陷区域是否达到宽度条件，不达到条件的强制回缩
+	// 假设top1->top2都是遵循右手定则
+	float maxDelta = 1.1;
+	int mid = (cave.Bottom1 + (cave.Bottom2 - cave.Bottom1 + lv.size()) % lv.size() / 2) % lv.size();
+	float y_max = points[lv[mid]].Value[1];   mid的Y坐标
+	//高度大于阈值，回缩
+	if (y_max > 0.0){
+		//for (int i = cave.Top1; i != cave.Top2; i = (i + 1) % lv.size())
+		//	y_max = points[lv[i]].Value[1] > y_max ? points[lv[i]].Value[1] : y_max;
+
+		// 回缩top1点
+		while (y_max - points[lv[cave.Top1]].Value[1] > maxDelta){     
+			if (cave.Bottom1 == cave.Top1)
+				cave.Bottom1 = (cave.Bottom1 + 1) % lv.size();
+			cave.Top1 = (cave.Top1 + 1) % lv.size();
+		}
+		// 回缩top2点
+		while (y_max - points[lv[cave.Top2]].Value[1] > maxDelta){
+			if (cave.Bottom2 == cave.Top2)
+				cave.Bottom2 = (cave.Bottom2 + 1) % lv.size();
+			cave.Top2 = (cave.Top2 + lv.size() - 1) % lv.size();
+		}
+	}
+	else{
+		//for (int i = cave.Top1; i != cave.Top2; i = (i + 1) % lv.size())
+		//	y_max = points[lv[i]].Value[1] < y_max ? points[lv[i]].Value[1] : y_max;
+
+		// 回缩top1点
+		while (points[lv[cave.Top1]].Value[1] - y_max > maxDelta){
+			if (cave.Bottom1 == cave.Top1)
+				cave.Bottom1 = (cave.Bottom1 + 1) % lv.size();
+			cave.Top1 = (cave.Top1 + 1) % lv.size();
+		}
+		// 回缩top2点
+		while (points[lv[cave.Top2]].Value[1] - y_max > maxDelta){
+			if (cave.Bottom2 == cave.Top2)
+				cave.Bottom2 = (cave.Bottom2 + lv.size() - 1) % lv.size();
+			cave.Top2 = (cave.Top2 + lv.size() - 1) % lv.size();
+		}
+	}
+
+
+}
+
+	
+	
+	
+	
+	
+	
+	
 #pragma region 先对微小结构进行处理
 	//analyze();
 	//maxFailure = 1;
@@ -670,7 +787,7 @@ findTopBetweenCave(caveList[cavenum - 1], caveList[0], widtheRestrict);
 	//ConfirmCaveBoundary();
 #pragma endregion 先对微小结构进行处理
 
-#pragma region 对小型凹陷进行处理
+#pragma region 对小型凹陷进行处理     在调用markCaveTop的时候，传入的true，进行了调用BuildBridge来进行搭桥 连接小区域（可尝试补洞）
 	analyze();
 	identfyCave(4, 2);
 	markCaveBottom();
@@ -693,3 +810,4 @@ findTopBetweenCave(caveList[cavenum - 1], caveList[0], widtheRestrict);
 #endif
 	//ConfirmCaveBoundary();
 #pragma endregion 先对小型凹陷进行处理
+	
